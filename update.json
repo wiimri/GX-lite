@@ -2,7 +2,7 @@
   "version": "1.2",
   "releaseName": "GX Light Browser 1.2",
   "publishedAt": "2026-06-08",
-  "downloadUrl": "https://github.com/wiimri/GX-lite/releases/tag/v1.2",
+  "downloadUrl": "https://github.com/wiimri/GX-lite/releases",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
     "El navegador consulta este update.json desde GitHub al iniciar.",
