@@ -1,55 +1,57 @@
 # GX Light Browser
 
-Current version: `1.1`
+Version actual: `1.1`
 
-GX Light Browser is a lightweight Windows browser prototype inspired by the workflow of Opera GX and Brave, without copying either product's branding or protected UI.
+GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
-It uses Microsoft Edge WebView2 instead of Electron, so the app is small and relies on the WebView2 runtime already present on many Windows systems.
+Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion sea mas pequena y aproveche el runtime WebView2 que ya viene instalado o disponible en muchos equipos Windows.
 
-## Current features
+## Caracteristicas actuales
 
-- Multi-tab browsing.
-- Isolated persistent profile under `%LOCALAPPDATA%\GXLightBrowser`.
-- WebView2 browser extensions enabled.
-- Import unpacked Chrome/Edge extensions from a folder.
-- Native request blocking before requests hit the page.
-- Local ABP-style filter file at `%LOCALAPPDATA%\GXLightBrowser\filters.txt`.
-- Strict WebView2 tracking prevention.
-- Polished compact shell with soft buttons, dark window frame, responsive toolbar, tab strip, sidebar shortcuts, and clear tooltips.
-- Extension marketplace shortcuts for Chrome Web Store and Opera Addons.
-- Tab close controls: click the `x`, middle-click a tab, or press `Ctrl+W`.
-- Middle-click shortcuts open in a new internal tab.
-- YouTube Shields helper that removes common YouTube ad containers, clicks skip buttons, and speeds through in-player ad states.
-- Low-memory target for inactive tabs.
-- Faster domain-rule lookup in the native blocker.
-- Built-in Privacy Firewall for known third-party trackers, telemetry-like endpoints, and tracking URL parameters.
-- Main menu inspired by Opera/Brave with shortcuts for tabs, history, downloads, extensions, passwords, memory, shields, settings, and developer tools.
-- Session history page.
-- Session downloads page.
-- WebView2 password autosave and autofill enabled.
-- Tab islands for grouped new tabs.
-- Tab island context menu: select multiple tabs, create a colored island, duplicate/reload/copy/close selected tabs.
-- Real tab suspension/discarding for inactive tabs.
-- Visible memory monitor and configurable GX Control limiters.
-- One-time update notes tab per installed version.
-- Favorites bar with middle-click open-in-new-tab support.
-- Bookmark import/export using browser-compatible HTML.
-- Password CSV import/export through a local Windows DPAPI-protected GX Light vault.
+- Navegacion con multiples pestanas.
+- Perfil persistente aislado en `%LOCALAPPDATA%\GXLightBrowser`.
+- Extensiones WebView2 habilitadas.
+- Importacion de extensiones Chrome/Edge desempaquetadas desde una carpeta.
+- Bloqueo nativo de requests antes de que lleguen a la pagina.
+- Archivo local de filtros tipo ABP en `%LOCALAPPDATA%\GXLightBrowser\filters.txt`.
+- Prevencion estricta de seguimiento de WebView2.
+- Interfaz compacta con marco oscuro, toolbar adaptable, pestanas, accesos directos laterales y tooltips.
+- Accesos a Chrome Web Store y Opera Addons.
+- Cierre de pestanas con `x`, click del scroll o `Ctrl+W`.
+- Accesos directos con click del scroll para abrir en una nueva pestana interna.
+- YouTube Shields para quitar contenedores comunes de anuncios, pulsar botones de saltar anuncio y acelerar estados de anuncio dentro del reproductor.
+- Modo de baja memoria para pestanas inactivas.
+- Busqueda rapida de reglas de dominio en el bloqueador nativo.
+- Privacy Firewall integrado para trackers conocidos, endpoints tipo telemetria y parametros de seguimiento.
+- Menu principal inspirado en Opera/Brave con accesos a pestanas, historial, descargas, extensiones, passwords, memoria, shields, settings y herramientas de desarrollador.
+- Pagina de historial de sesion.
+- Pagina de descargas de sesion.
+- Autosave y autofill de passwords de WebView2 habilitados.
+- Tab islands para agrupar pestanas.
+- Menu contextual de tab islands: seleccionar varias pestanas, crear una isla coloreada, duplicar, recargar, copiar URLs y cerrar seleccionadas.
+- Suspension real de pestanas inactivas para liberar WebView2 y memoria.
+- Monitor visible de memoria y GX Control configurable.
+- Pestana de novedades que aparece solo una vez por version instalada.
+- Barra de favoritos con apertura en nueva pestana mediante click del scroll.
+- Importacion/exportacion de bookmarks en HTML compatible con navegadores.
+- Importacion/exportacion de passwords CSV mediante una boveda local protegida con Windows DPAPI.
 
-## Versioning
+## Versionado
 
-GX Light Browser uses simple user-facing versions:
+GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
-- current baseline: `1.0`
-- current improvement line: `1.1`
-- each improvement or fix increments the minor version: `1.2`, `1.3`, ... `1.19`
-- after `1.19`, the next line becomes `2.0`
+- linea base actual: `1.0`
+- linea de mejora actual: `1.1`
+- cada mejora o correccion del navegador sube la version menor: `1.2`, `1.3`, ... `1.19`
+- despues de `1.19`, la siguiente linea pasa a `2.0`
 
-When a new version runs for the first time, the browser opens `gxlight://updated` with a short summary. The app stores the last seen version in `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, so the update tab only appears once per version.
+Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
 
-## Build
+Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni lo que ve el usuario al iniciar el navegador.
 
-Run from PowerShell:
+## Compilacion
+
+Ejecutar desde PowerShell:
 
 ```powershell
 cd C:\Users\arias\Documents\DEV\GXLightBrowser
@@ -57,113 +59,115 @@ cd C:\Users\arias\Documents\DEV\GXLightBrowser
 .\scripts\Run.ps1
 ```
 
-The build script downloads the official `Microsoft.Web.WebView2` NuGet package, compiles with the .NET Framework compiler included in Windows, and writes `bin\GXLightBrowser.exe`.
+El script de build descarga el paquete oficial `Microsoft.Web.WebView2` desde NuGet, compila con el compilador de .NET Framework incluido en Windows y genera `bin\GXLightBrowser.exe`.
 
-## Extensions
+## Extensiones
 
-Open `Menu > Extensions` and use one of these options:
+Abrir `Menu > Extensions` y usar una de estas opciones:
 
 - `Importar extension desempaquetada...`
 - `Ver extensiones instaladas`
 - `Abrir Chrome Web Store`
 - `Abrir Opera Addons`
 
-When importing, select either:
+Al importar, seleccionar:
 
-- an unpacked extension folder containing `manifest.json`, or
-- a Chrome/Edge installed extension version folder.
+- una carpeta de extension desempaquetada que contenga `manifest.json`, o
+- una carpeta de version de una extension instalada en Chrome/Edge.
 
-The importer copies the extension into the GX Light profile and removes `_metadata`-style folders because WebView2 rejects extension paths containing names that start with `_`.
+El importador copia la extension al perfil de GX Light y elimina carpetas tipo `_metadata`, porque WebView2 rechaza rutas de extension con carpetas que comienzan con `_`.
 
-Important: WebView2 supports browser extensions from local folders, but it is not the Chrome Web Store UI. Some extensions that depend on browser chrome UI, store-specific installation behavior, or unsupported APIs may need adaptation.
+Importante: WebView2 permite cargar extensiones locales, pero no equivale a instalar directo desde Chrome Web Store con un click. Algunas extensiones que dependen de la UI propia de Chrome, de instalacion desde tienda o de APIs no soportadas pueden requerir adaptacion.
 
-The store buttons are navigation shortcuts. Direct one-click installation from Chrome Web Store is controlled by the store/browser integration and may not work inside WebView2, so the reliable path for now is downloading or locating the extension folder and importing it.
+Los botones de tiendas son accesos de navegacion. La instalacion directa desde Chrome Web Store depende de la integracion tienda/navegador; por ahora el camino confiable es descargar o ubicar la carpeta de la extension e importarla.
 
-## Bookmarks
+## Favoritos
 
-The favorites bar is always visible under the navigation row.
+La barra de favoritos queda visible bajo la barra de navegacion.
 
-- `Ctrl+D` saves the current page to the favorites bar.
-- Left-click opens a bookmark in the current tab.
-- Middle-click opens a bookmark in a new internal tab.
-- Right-click a bookmark to open, copy its address, or remove it.
-- `Menu > Bookmarks` can import/export browser-compatible bookmarks HTML.
+- `Ctrl+D` guarda la pagina actual en favoritos.
+- Click izquierdo abre el favorito en la pestana actual.
+- Click del scroll abre el favorito en una nueva pestana interna.
+- Click derecho permite abrir, copiar la direccion o eliminar el favorito.
+- `Menu > Bookmarks` permite importar/exportar bookmarks HTML compatibles con navegadores.
 
 ## Passwords
 
-WebView2 native password autosave/autofill is enabled for the app profile under `%LOCALAPPDATA%\GXLightBrowser\Profile`.
+El autosave/autofill nativo de WebView2 esta habilitado para el perfil de la app en `%LOCALAPPDATA%\GXLightBrowser\Profile`.
 
-GX Light also includes a local password import/export vault:
+GX Light tambien incluye una boveda local para importar/exportar passwords:
 
-- CSV format: `name,url,username,password,note`
-- imported entries are stored encrypted for the current Windows user with DPAPI
-- exporting writes a normal plaintext CSV, so it should be handled carefully
+- formato CSV: `name,url,username,password,note`
+- las entradas importadas se guardan cifradas para el usuario actual de Windows con DPAPI
+- al exportar se genera un CSV normal en texto visible, asi que hay que tratarlo con cuidado
 
-Important: WebView2 does not expose a public API to inject imported passwords directly into its native saved-password manager. The GX Light vault is an import/export companion, while WebView2 handles normal save/autofill during browsing.
+Importante: WebView2 no expone una API publica para inyectar passwords importadas directamente en su gestor nativo. La boveda de GX Light sirve como companera de import/export; WebView2 sigue manejando el guardado y autofill normal durante la navegacion.
 
-## Ad blocking
+## Bloqueo de anuncios
 
-The first version ships with a native blocker that intercepts WebView2 requests through `WebResourceRequested`. It supports the highest-impact subset of ABP/EasyList network rules:
+La version actual incluye un bloqueador nativo que intercepta requests de WebView2 mediante `WebResourceRequested`. Soporta el subconjunto mas importante de reglas ABP/EasyList:
 
 - `||domain.com^`
-- substring URL rules
-- basic `@@` allow rules
-- comments and cosmetic rules are ignored safely
+- reglas simples por substring de URL
+- reglas basicas de permiso con `@@`
+- comentarios y reglas cosmeticas se ignoran de forma segura
 
-To refresh larger filter lists:
+Para refrescar listas grandes de filtros:
 
 ```powershell
 .\scripts\Update-Filters.ps1
 ```
 
-## Brave-level blocker path
+## Camino hacia un bloqueador nivel Brave
 
-Brave's production blocker is powered by the open-source `brave/adblock-rust` engine. This prototype is structured so the `AdBlocker` class can be replaced by a native `adblock-rust` binding later. That requires either:
+El bloqueador de produccion de Brave se basa en el motor open source `brave/adblock-rust`. Este prototipo esta preparado para que la clase `AdBlocker` pueda reemplazarse mas adelante por una integracion nativa con `adblock-rust`.
 
-- Rust toolchain plus a C ABI/UniFFI wrapper for C#, or
-- the Node `adblock-rs` binding as a local sidecar.
+Opciones posibles:
 
-The current app already blocks requests natively and does not rely on Manifest V3 extension APIs for its built-in blocker.
+- toolchain de Rust mas un wrapper C ABI/UniFFI para C#, o
+- binding Node `adblock-rs` como sidecar local.
+
+El bloqueador actual ya intercepta requests de forma nativa y no depende de APIs Manifest V3 para su bloqueo incorporado.
 
 ## Privacy Firewall
 
-GX Light Browser now includes a local browser-level Privacy Firewall. It does not install system drivers or modify Windows Firewall rules; it runs inside the browser request pipeline.
+GX Light Browser incluye un Privacy Firewall local a nivel navegador. No instala drivers, no modifica Windows Firewall y no actua como VPN; funciona dentro del pipeline de requests del navegador.
 
-It currently:
+Actualmente:
 
-- blocks known third-party tracker domains such as analytics, pixels, RUM, ad-tech, and attribution hosts
-- blocks third-party requests that look like telemetry, beacons, pixels, or tracking endpoints
-- strips tracking query parameters such as `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid`, and similar IDs during navigation
-- keeps site compatibility exceptions for YouTube video playback resources
+- bloquea dominios conocidos de trackers, analytics, pixels, RUM, ad-tech y attribution
+- bloquea requests de terceros que parecen telemetria, beacons, pixels o endpoints de tracking
+- limpia parametros de seguimiento como `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid` y similares durante la navegacion
+- mantiene excepciones de compatibilidad para recursos necesarios de reproduccion de YouTube
 
-This is not a VPN and cannot hide your IP from websites. It reduces browser-level tracking surfaces but does not replace a full native adblock engine such as `adblock-rust`.
+Esto no oculta tu IP ni reemplaza un bloqueador nativo completo como `adblock-rust`. Su objetivo es reducir superficies de seguimiento dentro del navegador.
 
-## UI verification
+## Verificacion UI
 
-The responsive browser chrome is mirrored in `docs/ui-preview.html` so it can be checked with Playwright:
+El chrome responsive del navegador esta reflejado en `docs\ui-preview.html` para revisarlo con Playwright:
 
 ```powershell
 npm.cmd run test:ui
 npm.cmd run test:firewall
 ```
 
-This saves screenshots under `screenshots/` and checks desktop plus compact widths for horizontal overflow.
-It also verifies tab closing, middle-click shortcut behavior, and the YouTube Shields script against a mocked YouTube ad page.
-The firewall probe checks tracker blocking and tracking-parameter stripping.
+Esto guarda screenshots en `screenshots\` y revisa que no haya overflow horizontal en escritorio ni modo compacto. Tambien verifica cierre de pestanas, click del scroll en accesos/favoritos y el script de YouTube Shields contra una pagina mock con anuncios.
 
-## Low-resource controls
+La prueba de firewall revisa bloqueo de trackers y limpieza de parametros de seguimiento.
 
-- The top bar keeps navigation, address, memory usage, memory limit, and menu.
-- Other browser features live under `Menu`.
-- `GX 0.8G` opens GX Control with RAM, hard limit, hot tabs killer, CPU policy, and network policy controls.
-- Inactive tabs are marked low-memory and can be suspended/discarded.
-- `Menu > Suspend inactive tabs now` discards inactive WebViews while leaving the tab visible.
+## Controles para bajos recursos
 
-## Audit
+- La barra superior mantiene navegacion, direccion, uso de memoria, limitador de memoria y menu.
+- El resto de funciones vive dentro de `Menu`.
+- `GX 0.8G` abre GX Control con RAM limiter, hard limit, hot tabs killer, CPU policy y network policy.
+- Las pestanas inactivas pasan a bajo consumo.
+- `Menu > Suspend inactive tabs now` descarta WebViews inactivos y mantiene la pestana visible.
 
-See `AUDIT.md` for the current architecture review, low-resource roadmap, measured memory notes, and next priorities.
+## Auditoria
 
-## Sources checked
+Ver `AUDIT.md` para la revision actual de arquitectura, roadmap de bajos recursos, notas de memoria y prioridades siguientes.
 
-- Microsoft WebView2 extension APIs: `CoreWebView2EnvironmentOptions.AreBrowserExtensionsEnabled`, `CoreWebView2Profile.AddBrowserExtensionAsync`, and `GetBrowserExtensionsAsync`.
-- Brave adblock engine: `https://github.com/brave/adblock-rust`.
+## Fuentes revisadas
+
+- APIs de extensiones de Microsoft WebView2: `CoreWebView2EnvironmentOptions.AreBrowserExtensionsEnabled`, `CoreWebView2Profile.AddBrowserExtensionAsync` y `GetBrowserExtensionsAsync`.
+- Motor de bloqueo de Brave: `https://github.com/brave/adblock-rust`.
