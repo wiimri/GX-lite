@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-07
 
-Version actual: 1.3
+Version actual: 1.6
 
 ## Estado Actual
 
@@ -29,6 +29,8 @@ Medicion local despues de iniciar la app:
 - Se agrego boveda local DPAPI para import/export CSV de passwords.
 - Se agrego manifiesto remoto `update.json` en GitHub para mostrar novedades sin recompilar solo el texto del aviso.
 - Se corrigio la navegacion de botones en paginas internas para abrir GitHub/Releases mediante el host WebView2.
+- Se agrego gestor de bookmarks con carpetas, seleccion multiple y eliminacion masiva.
+- Se corrigio la recepcion de comandos internos de bookmarks cuando WebView2 reporta origen gxlight.
 - Se mantuvo el build limpio y las pruebas UI automatizadas.
 
 ## Hallazgos Criticos

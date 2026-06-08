@@ -1,18 +1,14 @@
 {
-  "version": "1.5",
-  "releaseName": "GX Light Browser 1.5",
+  "version": "1.6",
+  "releaseName": "GX Light Browser 1.6",
   "publishedAt": "2026-06-08",
   "downloadUrl": "https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "Se agrego seleccion multiple de bookmarks con checkboxes.",
-    "Se puede eliminar varios favoritos a la vez con el boton Eliminar seleccionados.",
-    "Se agrego boton Eliminar todos los favoritos con confirmacion.",
-    "La tecla Suprimir (Delete) elimina los favoritos seleccionados.",
-    "Ctrl+A selecciona o deselecciona todos los favoritos visibles.",
-    "Eliminacion individual ya no requiere confirmacion extra.",
-    "Se removio el boton de Opera Addons que no funcionaba.",
-    "El boton de menu ahora usa el icono hamburguesa estandar.",
-    "Se mejoro la importacion de bookmarks conservando carpetas originales."
+    "Se corrigio Eliminar todos en el gestor de bookmarks.",
+    "Los comandos internos de bookmarks funcionan aunque WebView2 reporte el origen como gxlight://home.",
+    "La importacion de bookmarks conserva carpetas anidadas como rutas Padre / Hija.",
+    "La exportacion HTML vuelve a agrupar favoritos por carpeta.",
+    "README, CHANGELOG y update.json quedan sincronizados con la version actual."
   ]
 }

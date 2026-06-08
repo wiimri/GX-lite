@@ -597,11 +597,6 @@ namespace GXLightBrowser
 
         private void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(e.Source) || !e.Source.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
             string message;
             try
             {
@@ -617,11 +612,17 @@ namespace GXLightBrowser
                 return;
             }
 
+            CoreWebView2 core = sender as CoreWebView2;
+            if (message.StartsWith("gxlight:", StringComparison.Ordinal) && !IsTrustedInternalMessageSource(core, e.Source))
+            {
+                return;
+            }
+
             const string navigatePrefix = "gxlight:navigate:";
             if (message.StartsWith(navigatePrefix, StringComparison.Ordinal))
             {
                 string url = message.Substring(navigatePrefix.Length);
-                WebView2 web = WebViewForCore(sender as CoreWebView2) ?? ActiveWebView();
+                WebView2 web = WebViewForCore(core) ?? ActiveWebView();
                 if (web != null && web.CoreWebView2 != null)
                 {
                     Navigate(web, url);
@@ -756,6 +757,26 @@ namespace GXLightBrowser
                 NavigateInternal("bookmarks");
                 return;
             }
+        }
+
+        private bool IsTrustedInternalMessageSource(CoreWebView2 core, string source)
+        {
+            if (!string.IsNullOrWhiteSpace(source) &&
+                (source.StartsWith("data:", StringComparison.OrdinalIgnoreCase) ||
+                 source.StartsWith("about:", StringComparison.OrdinalIgnoreCase) ||
+                 source.StartsWith("gxlight://", StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            WebView2 web = WebViewForCore(core);
+            if (web == null || web != ActiveWebView())
+            {
+                return false;
+            }
+
+            return !string.IsNullOrWhiteSpace(_address.Text) &&
+                _address.Text.StartsWith("gxlight://", StringComparison.OrdinalIgnoreCase);
         }
 
         private void WebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
@@ -1482,7 +1503,15 @@ namespace GXLightBrowser
 
                 if (line.IndexOf("<DL", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    string folderToPush = pendingFolder ?? (folders.Count == 0 ? "Favorites bar" : folders.Peek());
+                    string folderToPush;
+                    if (!string.IsNullOrWhiteSpace(pendingFolder))
+                    {
+                        folderToPush = JoinBookmarkFolder(folders.Count == 0 ? string.Empty : folders.Peek(), pendingFolder);
+                    }
+                    else
+                    {
+                        folderToPush = folders.Count == 0 ? "Favorites bar" : folders.Peek();
+                    }
                     folders.Push(folderToPush);
                     pendingFolder = null;
                 }
@@ -1517,6 +1546,17 @@ namespace GXLightBrowser
             return added;
         }
 
+        private static string JoinBookmarkFolder(string parent, string child)
+        {
+            string cleanChild = string.IsNullOrWhiteSpace(child) ? "Imported" : child.Trim();
+            if (string.IsNullOrWhiteSpace(parent) || string.Equals(parent, "Favorites bar", StringComparison.OrdinalIgnoreCase))
+            {
+                return cleanChild;
+            }
+
+            return parent.Trim() + " / " + cleanChild;
+        }
+
         private string BuildBookmarksHtml()
         {
             StringBuilder html = new StringBuilder();
@@ -1525,12 +1565,37 @@ namespace GXLightBrowser
             html.AppendLine("<TITLE>GX Light Bookmarks</TITLE>");
             html.AppendLine("<H1>GX Light Bookmarks</H1>");
             html.AppendLine("<DL><p>");
+
+            List<string> folders = new List<string>();
             for (int i = 0; i < _bookmarks.Count; i++)
             {
                 BookmarkEntry entry = _bookmarks[i];
-                long unix = (long)(entry.CreatedUtc - new DateTime(1970, 1, 1)).TotalSeconds;
-                html.Append("    <DT><A HREF=\"").Append(EscapeHtml(entry.Url)).Append("\" ADD_DATE=\"")
-                    .Append(unix).Append("\">").Append(EscapeHtml(entry.Title)).AppendLine("</A>");
+                string folder = string.IsNullOrWhiteSpace(entry.Folder) ? "Favorites bar" : entry.Folder;
+                if (!folders.Contains(folder))
+                {
+                    folders.Add(folder);
+                }
+            }
+
+            for (int f = 0; f < folders.Count; f++)
+            {
+                string folder = folders[f];
+                html.Append("    <DT><H3>").Append(EscapeHtml(folder)).AppendLine("</H3>");
+                html.AppendLine("    <DL><p>");
+                for (int i = 0; i < _bookmarks.Count; i++)
+                {
+                    BookmarkEntry entry = _bookmarks[i];
+                    string entryFolder = string.IsNullOrWhiteSpace(entry.Folder) ? "Favorites bar" : entry.Folder;
+                    if (!string.Equals(entryFolder, folder, StringComparison.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(entry.Url))
+                    {
+                        continue;
+                    }
+
+                    long unix = (long)(entry.CreatedUtc - new DateTime(1970, 1, 1)).TotalSeconds;
+                    html.Append("        <DT><A HREF=\"").Append(EscapeHtml(entry.Url)).Append("\" ADD_DATE=\"")
+                        .Append(unix).Append("\">").Append(EscapeHtml(entry.Title)).AppendLine("</A>");
+                }
+                html.AppendLine("    </DL><p>");
             }
             html.AppendLine("</DL><p>");
             return html.ToString();
@@ -2705,137 +2770,185 @@ namespace GXLightBrowser
         private string BookmarksHtml()
         {
             string json = BookmarksJson();
-            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<title>Bookmarks Manager</title>" +
-                "<style>" +
-                "*{box-sizing:border-box}" +
-                "body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif;display:flex;min-height:100vh}" +
-                "aside{width:240px;background:#13171f;border-right:1px solid #222936;padding:20px;display:flex;flex-direction:column;gap:15px}" +
-                "aside h2{color:#72f5ff;font-size:16px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:8px}" +
-                ".folder-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px}" +
-                ".folder-item{padding:8px 12px;cursor:pointer;border-radius:4px;transition:background .2s,color .2s;display:flex;align-items:center;gap:8px;color:#aeb8c4;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
-                ".folder-item:hover,.folder-item.active{background:#1c2331;color:#72f5ff}" +
-                ".btn-new-folder{background:transparent;border:1px dashed #484d5c;color:#aeb8c4;padding:10px;border-radius:4px;cursor:pointer;text-align:center;font-size:13px;transition:border-color .2s,color .2s;margin-top:10px}" +
-                ".btn-new-folder:hover{border-color:#72f5ff;color:#72f5ff}" +
-                "main{flex:1;padding:30px;display:flex;flex-direction:column;gap:16px;outline:none}" +
-                ".header-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}" +
-                "h1{color:#72f5ff;font-size:28px;margin:0}" +
-                ".toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}" +
-                ".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:280px;display:flex;align-items:center}" +
-                ".search-box input{background:transparent;border:none;color:#fff;font-size:14px;outline:none;width:100%}" +
-                ".btn-toolbar{background:#1c2331;border:1px solid #2e3440;color:#aeb8c4;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}" +
-                ".btn-toolbar:hover{border-color:#72f5ff;color:#72f5ff}" +
-                ".btn-toolbar.danger{border-color:#ff6b6b33;color:#ff6b6b}" +
-                ".btn-toolbar.danger:hover{background:#ff6b6b22;border-color:#ff6b6b}" +
-                ".btn-toolbar:disabled{opacity:.35;cursor:not-allowed}" +
-                ".selection-info{color:#72f5ff;font-size:13px;font-weight:600;min-width:100px}" +
-                ".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:auto;flex:1}" +
-                "table{border-collapse:collapse;width:100%;text-align:left}" +
-                "th,td{padding:10px 14px;border-bottom:1px solid #222936;font-size:13px}" +
-                "th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0;z-index:1}" +
-                "tr:last-child td{border-bottom:none}" +
-                "tr:hover td{background:#171c26}" +
-                "tr.selected td{background:#1a2a35}" +
-                "a{color:#72f5ff;text-decoration:none;word-break:break-all}" +
-                "a:hover{text-decoration:underline}" +
-                ".actions{display:flex;align-items:center;gap:8px}" +
-                ".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s;font-size:13px}" +
-                ".btn-delete:hover{background:rgba(255,107,107,.15)}" +
-                "select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:12px}" +
-                "select:hover{border-color:#72f5ff}" +
-                "input[type=checkbox]{accent-color:#72f5ff;width:16px;height:16px;cursor:pointer}" +
-                ".hint{color:#555e6e;font-size:12px;margin-top:4px}" +
-                "</style></head><body>" +
-                "<aside><h2>\ud83d\udcc1 Carpetas</h2><ul class='folder-list' id='folderList'></ul><button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button></aside>" +
-                "<main id='mainArea' tabindex='0'><div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1></div>" +
-                "<div class='toolbar'>" +
-                "<div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div>" +
-                "<button class='btn-toolbar' onclick='toggleSelectAll()' id='btnSelectAll'>Seleccionar todos</button>" +
-                "<button class='btn-toolbar danger' onclick='deleteSelected()' id='btnDeleteSelected' disabled>Eliminar seleccionados</button>" +
-                "<button class='btn-toolbar danger' onclick='deleteAll()' id='btnDeleteAll'>Eliminar todos</button>" +
-                "<span class='selection-info' id='selectionInfo'></span>" +
-                "</div>" +
-                "<div class='table-container'><table><thead><tr><th style='width:40px'><input type='checkbox' id='headerCheckbox' onchange='toggleSelectAll()'></th><th>Titulo</th><th>URL</th><th>Carpeta</th><th>Acciones</th></tr></thead>" +
-                "<tbody id='bookmarksTableBody'></tbody></table></div>" +
-                "<div class='hint'>Tip: selecciona varios favoritos con los checkboxes y presiona la tecla <b>Suprimir</b> (Delete) para eliminarlos.</div>" +
-                "</main>" +
-                "<script>" +
-                "const bookmarks=" + json + ";" +
-                "let activeFilter='all';" +
-                "const selected=new Set();" +
-                "bookmarks.forEach(function(b,idx){b.originalIndex=idx;});" +
-                "function b64(s){return btoa(unescape(encodeURIComponent(s||'')));}" +
-                "function getFolders(){var folders=[];bookmarks.forEach(function(b){if(b.folder&&b.folder.trim()!==''&&folders.indexOf(b.folder)===-1){folders.push(b.folder);}});return folders;}" +
-                "function getVisibleIndices(){var search=document.getElementById('searchInput').value.toLowerCase();var filtered=[];" +
-                "for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];" +
-                "if(activeFilter==='all'){if(!b.url||b.url.trim()==='')continue;}else{if(b.folder!==activeFilter)continue;}" +
-                "if(search&&!((b.title&&b.title.toLowerCase().indexOf(search)>=0)||(b.url&&b.url.toLowerCase().indexOf(search)>=0)))continue;" +
-                "filtered.push(b.originalIndex);}return filtered;}" +
-                "function updateSelectionUI(){var count=selected.size;document.getElementById('selectionInfo').innerText=count>0?count+' seleccionado'+(count>1?'s':''):'';" +
-                "document.getElementById('btnDeleteSelected').disabled=count===0;" +
-                "var visible=getVisibleIndices();var allChecked=visible.length>0;" +
-                "for(var i=0;i<visible.length;i++){if(!selected.has(visible[i])){allChecked=false;break;}}" +
-                "document.getElementById('headerCheckbox').checked=allChecked&&visible.length>0;" +
-                "document.getElementById('btnSelectAll').innerText=allChecked&&visible.length>0?'Deseleccionar todos':'Seleccionar todos';}" +
-                "function toggleCheck(idx){if(selected.has(idx)){selected.delete(idx);}else{selected.add(idx);}updateSelectionUI();" +
-                "var row=document.querySelector('tr[data-idx=\"'+idx+'\"]');if(row){row.className=selected.has(idx)?'selected':'';}" +
-                "}" +
-                "function toggleSelectAll(){var visible=getVisibleIndices();var allChecked=true;" +
-                "for(var i=0;i<visible.length;i++){if(!selected.has(visible[i])){allChecked=false;break;}}" +
-                "for(var i=0;i<visible.length;i++){if(allChecked){selected.delete(visible[i]);}else{selected.add(visible[i]);}}" +
-                "renderBookmarks();updateSelectionUI();}" +
-                "function deleteSelected(){if(selected.size===0)return;" +
-                "if(!confirm('\u00bfEliminar '+selected.size+' favorito'+(selected.size>1?'s':'')+'?'))return;" +
-                "var payload='';selected.forEach(function(idx){var b=bookmarks[idx];" +
-                "if(payload.length>0)payload+=';';payload+=b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder);});" +
-                "selected.clear();" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:delete-batch:'+payload);}" +
-                "function deleteAll(){if(bookmarks.length===0)return;" +
-                "if(!confirm('\u00bfSeguro que quieres ELIMINAR TODOS los favoritos? Esta accion no se puede deshacer.'))return;" +
-                "selected.clear();" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:delete-all');}" +
-                "function renderFolders(){var folderList=document.getElementById('folderList');var uniqueFolders=getFolders();" +
-                "var html='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(\\'all\\')\">\ud83d\udcc2 Todos</li>'+" +
-                "'<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(\\'Favorites bar\\')\">\u2b50 Barra</li>';" +
-                "for(var i=0;i<uniqueFolders.length;i++){var f=uniqueFolders[i];if(f!=='Favorites bar'){" +
-                "html+='<li class=\"folder-item '+(activeFilter===f?'active':'')+'\" onclick=\"filterFolder(\\''+escapeJs(f)+'\\')\"'>\ud83d\udcc1 '+escapeHtml(f)+'</li>';" +
-                "}}" +
-                "folderList.innerHTML=html;}" +
-                "function filterFolder(folder){activeFilter=folder;document.getElementById('pageTitle').innerText=folder==='all'?'Todos los favoritos':folder;renderFolders();renderBookmarks();updateSelectionUI();}" +
-                "function renderBookmarks(){var tbody=document.getElementById('bookmarksTableBody');var uniqueFolders=getFolders();" +
-                "if(uniqueFolders.indexOf('Favorites bar')===-1){uniqueFolders.push('Favorites bar');}" +
-                "var visible=getVisibleIndices();" +
-                "var html='';" +
-                "if(visible.length===0){html='<tr><td colspan=\"5\" style=\"text-align:center;color:#aeb8c4;padding:30px;\">No hay favoritos en esta seccion.</td></tr>';}" +
-                "else{for(var vi=0;vi<visible.length;vi++){var idx=visible[vi];var b=bookmarks[idx];" +
-                "var isPlaceholder=!b.url||b.url.trim()==='';" +
-                "var displayUrl=isPlaceholder?'<i style=\"color:#555e6e\">(Carpeta vacia)</i>':'<a href=\"#\" onclick=\"navigate('+idx+');return false;\">'+escapeHtml(b.url)+'</a>';" +
-                "var folderOptions='';" +
-                "for(var fi=0;fi<uniqueFolders.length;fi++){var f=uniqueFolders[fi];" +
-                "folderOptions+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';" +
-                "}" +
-                "var isChecked=selected.has(idx);" +
-                "html+='<tr data-idx=\"'+idx+'\" class=\"'+(isChecked?'selected':'')+'\"><td><input type=\"checkbox\" '+(isChecked?'checked ':'')+' onchange=\"toggleCheck('+idx+')\"></td><td style=\"font-weight:500;\">'+escapeHtml(b.title||'Sin titulo')+'</td><td>'+displayUrl+'</td><td><select onchange=\"moveBookmark('+idx+',this.value)\">'+folderOptions+'</select></td><td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteSingle('+idx+')\">\u2715</button></div></td></tr>';" +
-                "}}" +
-                "tbody.innerHTML=html;updateSelectionUI();}" +
-                "function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}" +
-                "function createNewFolder(){var name=prompt('Nombre de la nueva carpeta:');if(name&&name.trim()!==''){" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+b64(name.trim()));" +
-                "}}" +
-                "function deleteSingle(idx){" +
-                "var b=bookmarks[idx];" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder));}" +
-                "function moveBookmark(idx,newFolder){" +
-                "var b=bookmarks[idx];" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder)+'|'+b64(newFolder));}" +
-                "function escapeHtml(str){if(!str)return '';return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}" +
-                "function escapeJs(str){if(!str)return '';return str.replace(/\\\\/g,'\\\\\\\\').replace(/\\'/g,'\\\\\\'').replace(/\"/g,'\\\\\"');}" +
-                "document.getElementById('mainArea').addEventListener('keydown',function(e){" +
-                "if(e.key==='Delete'||e.keyCode===46){e.preventDefault();deleteSelected();}" +
-                "if(e.key==='a'&&(e.ctrlKey||e.metaKey)){e.preventDefault();toggleSelectAll();}" +
-                "});" +
-                "renderFolders();renderBookmarks();document.getElementById('mainArea').focus();" +
-                "</script></body></html>";
+            StringBuilder h = new StringBuilder();
+            h.Append("<!doctype html><html><head><meta charset='utf-8'>");
+            h.Append("<meta name='viewport' content='width=device-width,initial-scale=1'>");
+            h.Append("<title>Bookmarks Manager</title>");
+            h.Append("<style>");
+            h.Append("*{box-sizing:border-box}");
+            h.Append("body{margin:0;background:#0d0f14;color:#eef7fa;font-family:'Segoe UI',Arial,sans-serif;display:flex;min-height:100vh}");
+            h.Append("aside{width:240px;background:#13171f;border-right:1px solid #222936;padding:20px;display:flex;flex-direction:column;gap:15px}");
+            h.Append("aside h2{color:#72f5ff;font-size:16px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:8px}");
+            h.Append(".folder-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px}");
+            h.Append(".folder-item{padding:8px 12px;cursor:pointer;border-radius:4px;transition:background .2s,color .2s;display:flex;align-items:center;gap:8px;color:#aeb8c4;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}");
+            h.Append(".folder-item:hover,.folder-item.active{background:#1c2331;color:#72f5ff}");
+            h.Append(".btn-new-folder{background:transparent;border:1px dashed #484d5c;color:#aeb8c4;padding:10px;border-radius:4px;cursor:pointer;text-align:center;font-size:13px;transition:border-color .2s,color .2s;margin-top:10px}");
+            h.Append(".btn-new-folder:hover{border-color:#72f5ff;color:#72f5ff}");
+            h.Append("main{flex:1;padding:30px;display:flex;flex-direction:column;gap:16px;outline:none}");
+            h.Append(".header-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}");
+            h.Append("h1{color:#72f5ff;font-size:28px;margin:0}");
+            h.Append(".toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}");
+            h.Append(".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:280px;display:flex;align-items:center}");
+            h.Append(".search-box input{background:transparent;border:none;color:#fff;font-size:14px;outline:none;width:100%}");
+            h.Append(".btn-toolbar{background:#1c2331;border:1px solid #2e3440;color:#aeb8c4;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}");
+            h.Append(".btn-toolbar:hover{border-color:#72f5ff;color:#72f5ff}");
+            h.Append(".btn-toolbar.danger{border-color:rgba(255,107,107,.2);color:#ff6b6b}");
+            h.Append(".btn-toolbar.danger:hover{background:rgba(255,107,107,.13);border-color:#ff6b6b}");
+            h.Append(".btn-toolbar:disabled{opacity:.35;cursor:not-allowed}");
+            h.Append(".selection-info{color:#72f5ff;font-size:13px;font-weight:600;min-width:80px}");
+            h.Append(".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:auto;flex:1}");
+            h.Append("table{border-collapse:collapse;width:100%;text-align:left}");
+            h.Append("th,td{padding:10px 14px;border-bottom:1px solid #222936;font-size:13px}");
+            h.Append("th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0;z-index:1}");
+            h.Append("tr:last-child td{border-bottom:none}");
+            h.Append("tr:hover td{background:#171c26}");
+            h.Append("tr.selected td{background:#1a2a35}");
+            h.Append("a{color:#72f5ff;text-decoration:none;word-break:break-all}");
+            h.Append("a:hover{text-decoration:underline}");
+            h.Append(".actions{display:flex;align-items:center;gap:8px}");
+            h.Append(".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s;font-size:13px}");
+            h.Append(".btn-delete:hover{background:rgba(255,107,107,.15)}");
+            h.Append("select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:12px}");
+            h.Append("select:hover{border-color:#72f5ff}");
+            h.Append("input[type=checkbox]{accent-color:#72f5ff;width:16px;height:16px;cursor:pointer}");
+            h.Append(".hint{color:#555e6e;font-size:12px;margin-top:4px}");
+            h.Append("</style></head><body>");
+
+            // Sidebar
+            h.Append("<aside>");
+            h.Append("<h2>\ud83d\udcc1 Carpetas</h2>");
+            h.Append("<ul class='folder-list' id='folderList'></ul>");
+            h.Append("<button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button>");
+            h.Append("</aside>");
+
+            // Main area
+            h.Append("<main id='mainArea' tabindex='0'>");
+            h.Append("<div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1></div>");
+            h.Append("<div class='toolbar'>");
+            h.Append("<div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div>");
+            h.Append("<button class='btn-toolbar' onclick='toggleSelectAll()' id='btnSelectAll'>Seleccionar todos</button>");
+            h.Append("<button class='btn-toolbar danger' onclick='deleteSelected()' id='btnDeleteSelected' disabled>Eliminar seleccionados</button>");
+            h.Append("<button class='btn-toolbar danger' onclick='deleteAll()' id='btnDeleteAll'>Eliminar todos</button>");
+            h.Append("<span class='selection-info' id='selectionInfo'></span>");
+            h.Append("</div>");
+            h.Append("<div class='table-container'><table><thead><tr>");
+            h.Append("<th style='width:40px'><input type='checkbox' id='headerCheckbox' onchange='toggleSelectAll()'></th>");
+            h.Append("<th>Titulo</th><th>URL</th><th>Carpeta</th><th>Acciones</th>");
+            h.Append("</tr></thead><tbody id='bookmarksTableBody'></tbody></table></div>");
+            h.Append("<div class='hint'>Tip: selecciona varios favoritos con los checkboxes y presiona <b>Suprimir</b> (Delete) para eliminarlos. <b>Ctrl+A</b> selecciona todos.</div>");
+            h.Append("</main>");
+
+            // JavaScript
+            h.Append("<script>");
+            h.Append("var bookmarks=").Append(json).Append(";");
+            h.Append("var activeFilter='all';");
+            h.Append("var selected=new Set();");
+            h.Append("for(var _i=0;_i<bookmarks.length;_i++){bookmarks[_i].originalIndex=_i;}");
+
+            // Helpers
+            h.Append("function b64(s){try{return btoa(unescape(encodeURIComponent(s||'')));}catch(e){return '';}}");
+            h.Append("function escapeHtml(s){if(!s)return '';var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML;}");
+
+            // getFolders
+            h.Append("function getFolders(){var f=[];for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];if(b.folder&&b.folder.trim()!==''&&f.indexOf(b.folder)===-1)f.push(b.folder);}return f;}");
+
+            // getVisibleIndices
+            h.Append("function getVisibleIndices(){var s=document.getElementById('searchInput').value.toLowerCase();var r=[];");
+            h.Append("for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];");
+            h.Append("if(activeFilter==='all'){if(!b.url||b.url.trim()==='')continue;}else{if(b.folder!==activeFilter)continue;}");
+            h.Append("if(s&&!((b.title&&b.title.toLowerCase().indexOf(s)>=0)||(b.url&&b.url.toLowerCase().indexOf(s)>=0)))continue;");
+            h.Append("r.push(b.originalIndex);}return r;}");
+
+            // updateSelectionUI
+            h.Append("function updateSelectionUI(){var c=selected.size;");
+            h.Append("document.getElementById('selectionInfo').innerText=c>0?c+' seleccionado'+(c>1?'s':''):'';");
+            h.Append("document.getElementById('btnDeleteSelected').disabled=c===0;");
+            h.Append("var vis=getVisibleIndices();var all=vis.length>0;");
+            h.Append("for(var i=0;i<vis.length;i++){if(!selected.has(vis[i])){all=false;break;}}");
+            h.Append("document.getElementById('headerCheckbox').checked=all&&vis.length>0;");
+            h.Append("document.getElementById('btnSelectAll').innerText=(all&&vis.length>0)?'Deseleccionar todos':'Seleccionar todos';}");
+
+            // toggleCheck
+            h.Append("function toggleCheck(idx){if(selected.has(idx))selected.delete(idx);else selected.add(idx);");
+            h.Append("var row=document.querySelector('tr[data-idx=\"'+idx+'\"]');if(row)row.className=selected.has(idx)?'selected':'';");
+            h.Append("updateSelectionUI();}");
+
+            // toggleSelectAll
+            h.Append("function toggleSelectAll(){var vis=getVisibleIndices();var all=true;");
+            h.Append("for(var i=0;i<vis.length;i++){if(!selected.has(vis[i])){all=false;break;}}");
+            h.Append("for(var i=0;i<vis.length;i++){if(all)selected.delete(vis[i]);else selected.add(vis[i]);}");
+            h.Append("renderBookmarks();updateSelectionUI();}");
+
+            // deleteSelected
+            h.Append("function deleteSelected(){if(selected.size===0)return;");
+            h.Append("if(!confirm('\\u00bfEliminar '+selected.size+' favorito'+(selected.size>1?'s':'')+'?'))return;");
+            h.Append("var payload='';selected.forEach(function(idx){var b=bookmarks[idx];");
+            h.Append("if(payload.length>0)payload+=';';payload+=b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder);});");
+            h.Append("selected.clear();window.chrome.webview.postMessage('gxlight:bookmarks:delete-batch:'+payload);}");
+
+            // deleteAll
+            h.Append("function deleteAll(){if(bookmarks.length===0)return;");
+            h.Append("if(!confirm('\\u00bfSeguro que quieres ELIMINAR TODOS los favoritos? Esta accion no se puede deshacer.'))return;");
+            h.Append("selected.clear();window.chrome.webview.postMessage('gxlight:bookmarks:delete-all');}");
+
+            // renderFolders
+            h.Append("function renderFolders(){var el=document.getElementById('folderList');var folders=getFolders();var out='';");
+            h.Append("out+='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"all\">\\ud83d\\udcc2 Todos</li>';");
+            h.Append("out+='<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"Favorites bar\">\\u2b50 Barra</li>';");
+            h.Append("for(var i=0;i<folders.length;i++){var f=folders[i];if(f==='Favorites bar')continue;");
+            h.Append("out+='<li class=\"folder-item '+(activeFilter===f?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"'+escapeHtml(f)+'\">\\ud83d\\udcc1 '+escapeHtml(f)+'</li>';}");
+            h.Append("el.innerHTML=out;}");
+
+            // filterFolder (uses data-folder attribute, no inline escaping needed)
+            h.Append("function filterFolder(el){activeFilter=el.getAttribute('data-folder');");
+            h.Append("document.getElementById('pageTitle').innerText=activeFilter==='all'?'Todos los favoritos':activeFilter;");
+            h.Append("renderFolders();renderBookmarks();updateSelectionUI();}");
+
+            // renderBookmarks
+            h.Append("function renderBookmarks(){var tbody=document.getElementById('bookmarksTableBody');var folders=getFolders();");
+            h.Append("if(folders.indexOf('Favorites bar')===-1)folders.push('Favorites bar');");
+            h.Append("var vis=getVisibleIndices();var out='';");
+            h.Append("if(vis.length===0){out='<tr><td colspan=\"5\" style=\"text-align:center;color:#aeb8c4;padding:30px\">No hay favoritos en esta seccion.</td></tr>';}");
+            h.Append("else{for(var vi=0;vi<vis.length;vi++){var idx=vis[vi];var b=bookmarks[idx];");
+            h.Append("var noUrl=!b.url||b.url.trim()==='';");
+            h.Append("var urlCell=noUrl?'<i style=\"color:#555e6e\">(Carpeta vacia)</i>':'<a href=\"#\" onclick=\"navigate('+idx+');return false\">'+escapeHtml(b.url)+'</a>';");
+            h.Append("var opts='';for(var fi=0;fi<folders.length;fi++){var f=folders[fi];opts+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';}");
+            h.Append("var chk=selected.has(idx);");
+            h.Append("out+='<tr data-idx=\"'+idx+'\" class=\"'+(chk?'selected':'')+'\">';");
+            h.Append("out+='<td><input type=\"checkbox\" '+(chk?'checked':'')+' onchange=\"toggleCheck('+idx+')\"></td>';");
+            h.Append("out+='<td style=\"font-weight:500\">'+escapeHtml(b.title||'Sin titulo')+'</td>';");
+            h.Append("out+='<td>'+urlCell+'</td>';");
+            h.Append("out+='<td><select onchange=\"moveBookmark('+idx+',this.value)\">'+opts+'</select></td>';");
+            h.Append("out+='<td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteSingle('+idx+')\">\\u2715</button></div></td>';");
+            h.Append("out+='</tr>';");
+            h.Append("}}");
+            h.Append("tbody.innerHTML=out;updateSelectionUI();}");
+
+            // navigate
+            h.Append("function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}");
+
+            // createNewFolder
+            h.Append("function createNewFolder(){var n=prompt('Nombre de la nueva carpeta:');if(n&&n.trim()!=='')");
+            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+b64(n.trim()));}");
+
+            // deleteSingle (no confirmation for single delete – one click)
+            h.Append("function deleteSingle(idx){var b=bookmarks[idx];");
+            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder));}");
+
+            // moveBookmark
+            h.Append("function moveBookmark(idx,nf){var b=bookmarks[idx];");
+            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder)+'|'+b64(nf));}");
+
+            // Keyboard shortcuts
+            h.Append("document.getElementById('mainArea').addEventListener('keydown',function(e){");
+            h.Append("if(e.key==='Delete'||e.keyCode===46){e.preventDefault();deleteSelected();}");
+            h.Append("if(e.key==='a'&&(e.ctrlKey||e.metaKey)){e.preventDefault();toggleSelectAll();}");
+            h.Append("});");
+
+            // Init
+            h.Append("renderFolders();renderBookmarks();document.getElementById('mainArea').focus();");
+            h.Append("</script></body></html>");
+            return h.ToString();
         }
 
         private string PasswordsHtml()

@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.5`
+- Version publicada: `1.6`
 - Fecha: `2026-06-08`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,23 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.6 - Correccion de eliminacion de bookmarks y carpetas importadas
+
+Fecha: `2026-06-08`
+
+Cambios:
+
+- Se corrigio `Eliminar todos` en el gestor de bookmarks.
+- Los comandos internos de bookmarks ya no dependen solo de que WebView2 reporte el origen como `data:text/html`.
+- Si la pestana interna aparece como `gxlight://home`, los comandos siguen siendo aceptados mientras la pestana activa sea interna.
+- La importacion de bookmarks HTML conserva carpetas anidadas como rutas `Padre / Hija`.
+- La exportacion HTML agrupa favoritos por carpeta.
+- README, CHANGELOG y `update.json` quedan sincronizados con la version actual.
+
+Notas:
+
+- Esta version corrige el caso donde aparecia el dialogo de confirmacion, pero al aceptar no se eliminaban los favoritos.
 
 ## v1.5 - Gestion avanzada de favoritos
 
