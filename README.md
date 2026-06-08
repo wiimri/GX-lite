@@ -55,6 +55,12 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 
 Eso permite cambiar el texto de novedades, links y version publicada desde GitHub. Si el navegador no puede conectar a GitHub, usa las notas locales compiladas como respaldo.
 
+El historico completo de cambios esta en `CHANGELOG.md`:
+
+```text
+https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md
+```
+
 Importante: cambiar `update.json` muestra novedades o avisa que hay una version disponible, pero no cambia magicamente el binario instalado. Para que el usuario reciba codigo nuevo sin hacerlo manualmente, el siguiente paso es crear un actualizador binario que descargue un release firmado y reemplace el `.exe`.
 
 Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni la experiencia dentro del navegador.
