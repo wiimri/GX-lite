@@ -318,12 +318,16 @@ namespace GXLightBrowser
                 }
             };
 
-            _tabs.SelectedIndexChanged += delegate
+            _tabs.SelectedIndexChanged += async delegate
             {
                 BrowserTab selected = ActiveTab();
                 if (selected != null)
                 {
                     selected.LastActiveUtc = DateTime.UtcNow;
+                    if (selected.IsSuspended)
+                    {
+                        await RestoreSuspendedTabAsync(selected);
+                    }
                 }
                 SyncAddress();
                 RebuildTabStrip();
@@ -889,7 +893,15 @@ namespace GXLightBrowser
                 {
                     only.BlockedRequests = 0;
                     page.Text = "Nueva pestana";
-                    Navigate(only.WebView, HomeUrl);
+                    if (only.WebView != null)
+                    {
+                        Navigate(only.WebView, HomeUrl);
+                    }
+                    else
+                    {
+                        only.SuspendedTitle = "Nueva pestana";
+                        only.SuspendedUrl = HomeUrl;
+                    }
                     RebuildTabStrip();
                     UpdateStatus();
                 }
@@ -899,7 +911,7 @@ namespace GXLightBrowser
             int closedIndex = _tabs.TabPages.IndexOf(page);
             BrowserTab tab = page.Tag as BrowserTab;
             _tabs.TabPages.Remove(page);
-            if (tab != null)
+            if (tab != null && tab.WebView != null)
             {
                 tab.WebView.Dispose();
             }
@@ -921,7 +933,7 @@ namespace GXLightBrowser
             for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
                 BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
-                if (tab == null || tab.WebView.CoreWebView2 == null)
+                if (tab == null || tab.IsSuspended || tab.WebView == null || tab.WebView.CoreWebView2 == null)
                 {
                     continue;
                 }
@@ -1151,6 +1163,13 @@ namespace GXLightBrowser
 
         private void SyncAddress()
         {
+            BrowserTab tab = ActiveTab();
+            if (tab != null && tab.IsSuspended)
+            {
+                _address.Text = string.IsNullOrWhiteSpace(tab.SuspendedUrl) ? HomeUrl : tab.SuspendedUrl;
+                return;
+            }
+
             WebView2 web = ActiveWebView();
             if (web != null && web.Source != null)
             {
