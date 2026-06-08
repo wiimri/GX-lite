@@ -18,6 +18,9 @@ namespace GXLightBrowser
         private readonly TrackBar _cpuTrack = new TrackBar();
         private readonly ComboBox _hotTabsMode = new ComboBox();
         private readonly ComboBox _networkProfile = new ComboBox();
+        private readonly CheckBox _lowResEnabled = new CheckBox();
+        private readonly TrackBar _maxActiveTrack = new TrackBar();
+        private readonly Label _maxActiveLabel = new Label();
 
         public GxControlDialog(GxControlSettings settings)
         {
@@ -56,6 +59,7 @@ namespace GXLightBrowser
             top = AddNetworkCard(root, top + 12);
             top = AddHotTabsCard(root, top + 12);
             top = AddCpuCard(root, top + 12);
+            top = AddLowResourceCard(root, top + 12);
 
             ChromeButton save = new ChromeButton();
             save.Text = "Apply";
@@ -241,8 +245,11 @@ namespace GXLightBrowser
             }
             _cpuEnabled.Checked = _settings.CpuLimiterEnabled;
             _cpuTrack.Value = Math.Max(_cpuTrack.Minimum, Math.Min(_cpuTrack.Maximum, _settings.CpuLimitPercent));
+            _lowResEnabled.Checked = _settings.LowResourcesModeEnabled;
+            _maxActiveTrack.Value = Math.Max(_maxActiveTrack.Minimum, Math.Min(_maxActiveTrack.Maximum, _settings.MaxActiveTabs));
             UpdateRamLabel();
             UpdateCpuLabel();
+            UpdateMaxActiveLabel();
         }
 
         private void SaveToSettings()
@@ -256,6 +263,32 @@ namespace GXLightBrowser
             _settings.HotTabsMode = _hotTabsMode.SelectedItem == null ? "RAM" : _hotTabsMode.SelectedItem.ToString();
             _settings.CpuLimiterEnabled = _cpuEnabled.Checked;
             _settings.CpuLimitPercent = _cpuTrack.Value;
+            _settings.LowResourcesModeEnabled = _lowResEnabled.Checked;
+            _settings.MaxActiveTabs = _maxActiveTrack.Value;
+        }
+
+        private int AddLowResourceCard(Control root, int top)
+        {
+            Panel card = Card(root, top, 146);
+            AddHeader(card, "LOW RESOURCE MODE", _lowResEnabled);
+
+            _maxActiveLabel.Left = 16;
+            _maxActiveLabel.Top = 56;
+            _maxActiveLabel.Width = 220;
+            _maxActiveLabel.Height = 20;
+            _maxActiveLabel.ForeColor = Theme.Muted;
+            card.Controls.Add(_maxActiveLabel);
+
+            _maxActiveTrack.Left = 16;
+            _maxActiveTrack.Top = 80;
+            _maxActiveTrack.Width = 296;
+            _maxActiveTrack.Minimum = 2;
+            _maxActiveTrack.Maximum = 20;
+            _maxActiveTrack.TickFrequency = 2;
+            _maxActiveTrack.Scroll += delegate { UpdateMaxActiveLabel(); };
+            card.Controls.Add(_maxActiveTrack);
+
+            return top + card.Height;
         }
 
         private void UpdateRamLabel()
@@ -266,6 +299,11 @@ namespace GXLightBrowser
         private void UpdateCpuLabel()
         {
             _cpuValue.Text = _cpuTrack.Value + "\n%";
+        }
+
+        private void UpdateMaxActiveLabel()
+        {
+            _maxActiveLabel.Text = "Max active tabs: " + _maxActiveTrack.Value;
         }
     }
 }

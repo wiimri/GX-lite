@@ -11,6 +11,8 @@ namespace GXLightBrowser
         public int CpuLimitPercent { get; set; }
         public bool NetworkLimiterEnabled { get; set; }
         public string NetworkProfile { get; set; }
+        public bool LowResourcesModeEnabled { get; set; }
+        public int MaxActiveTabs { get; set; }
 
         public GxControlSettings()
         {
@@ -23,6 +25,8 @@ namespace GXLightBrowser
             CpuLimitPercent = 50;
             NetworkLimiterEnabled = false;
             NetworkProfile = "25 MB/s - 200 Mbps";
+            LowResourcesModeEnabled = false;
+            MaxActiveTabs = 5;
         }
     }
 }

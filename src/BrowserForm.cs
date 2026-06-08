@@ -19,7 +19,6 @@ namespace GXLightBrowser
         private const string HomeUrl = "gxlight://home";
         private const string UpdatedUrl = "gxlight://updated";
         private const string ChromeStoreUrl = "https://chromewebstore.google.com/category/extensions?pli=1";
-        private const string OperaAddonsUrl = "https://addons.opera.com/en/extensions/?utm_source=ext_sidebar&hl=en-US";
 
         private readonly AdBlocker _adBlocker = new AdBlocker();
         private readonly PrivacyFirewall _privacyFirewall = new PrivacyFirewall();
@@ -38,7 +37,6 @@ namespace GXLightBrowser
         private readonly ChromeButton _shield = new ChromeButton();
         private readonly ChromeButton _extensions = new ChromeButton();
         private readonly ChromeButton _chromeStore = new ChromeButton();
-        private readonly ChromeButton _operaAddons = new ChromeButton();
         private readonly ChromeButton _tabStripNewTab = new ChromeButton();
         private readonly ChromeButton _menuButton = new ChromeButton();
         private readonly ChromeButton _memoryLimitButton = new ChromeButton();
@@ -74,6 +72,7 @@ namespace GXLightBrowser
 
             BuildLayout();
             SizeChanged += delegate { ApplyResponsiveMode(); };
+            FormClosing += delegate { SaveSession(); };
             Load += async delegate
             {
                 NativeChrome.ApplyDarkFrame(this);
@@ -107,7 +106,6 @@ namespace GXLightBrowser
             AddSideButton(side, "DC", "Discord", "https://discord.com/app");
             AddSideButton(side, "GH", "GitHub", "https://github.com/");
             AddSideButton(side, "CWS", "Chrome Web Store", ChromeStoreUrl);
-            AddSideButton(side, "OP", "Opera Addons", OperaAddonsUrl);
 
             TableLayoutPanel top = new TableLayoutPanel();
             top.Dock = DockStyle.Fill;
@@ -178,7 +176,8 @@ namespace GXLightBrowser
             _memoryLabel.BackColor = Theme.Panel;
             _memoryLabel.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
             ConfigureButton(_memoryLimitButton, "Limit 768", 88, "Limitador de memoria");
-            ConfigureButton(_menuButton, "Menu", 72, "Menu principal");
+            ConfigureButton(_menuButton, "☰", 38, "Menu principal");
+            _menuButton.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
             actions.Controls.AddRange(new Control[] { _menuButton, _memoryLimitButton, _memoryLabel });
 
             _bookmarksBar.Dock = DockStyle.Fill;
@@ -242,6 +241,8 @@ namespace GXLightBrowser
             _shield.Click += delegate
             {
                 _adBlockEnabled = !_adBlockEnabled;
+                _appSettings.AdBlockEnabled = _adBlockEnabled;
+                _appSettings.Save();
                 UpdateStatus();
             };
             _extensions.Click += async delegate { await ShowExtensionMenuAsync(); };
@@ -358,6 +359,7 @@ namespace GXLightBrowser
                 RebuildTabStrip();
                 ApplyTabResourcePolicy();
                 UpdateStatus();
+                SaveSession();
             };
 
             _memoryTimer.Interval = 5000;
@@ -365,6 +367,7 @@ namespace GXLightBrowser
             {
                 UpdateMemoryMonitor();
                 EnforceMemoryLimit();
+                EnforceLowResourceLimit();
                 SuspendIdleTabs();
             };
         }
@@ -373,6 +376,23 @@ namespace GXLightBrowser
         {
             AppPaths.Ensure();
             _appSettings = AppSettings.Load();
+
+            // Cargar preferencias del usuario
+            _adBlockEnabled = _appSettings.AdBlockEnabled;
+            _privacyFirewallEnabled = _appSettings.PrivacyFirewallEnabled;
+            _passwordSavingEnabled = _appSettings.PasswordSavingEnabled;
+            _gxControl.RamLimiterEnabled = _appSettings.RamLimiterEnabled;
+            _gxControl.MemoryLimitMb = _appSettings.MemoryLimitMb;
+            _gxControl.HardMemoryLimit = _appSettings.HardMemoryLimit;
+            _gxControl.HotTabsKillerEnabled = _appSettings.HotTabsKillerEnabled;
+            _gxControl.HotTabsMode = _appSettings.HotTabsMode;
+            _gxControl.CpuLimiterEnabled = _appSettings.CpuLimiterEnabled;
+            _gxControl.CpuLimitPercent = _appSettings.CpuLimitPercent;
+            _gxControl.NetworkLimiterEnabled = _appSettings.NetworkLimiterEnabled;
+            _gxControl.NetworkProfile = _appSettings.NetworkProfile;
+            _gxControl.LowResourcesModeEnabled = _appSettings.LowResourcesModeEnabled;
+            _gxControl.MaxActiveTabs = _appSettings.MaxActiveTabs;
+
             LoadBookmarks();
             LoadPasswordVault();
             RebuildBookmarksBar();
@@ -384,7 +404,59 @@ namespace GXLightBrowser
             options.AdditionalBrowserArguments = "--disable-features=HeavyAdPrivacyMitigations";
             _environment = await CoreWebView2Environment.CreateAsync(null, AppPaths.Profile, options);
 
-            await CreateTabAsync(HomeUrl);
+            // Restaurar sesión previa si existe
+            SessionData session = SessionManager.LoadSession();
+            if (session != null && session.Tabs.Count > 0)
+            {
+                Logger.Info("Restoring session with " + session.Tabs.Count + " tabs.");
+                if (session.X >= 0 && session.Y >= 0)
+                {
+                    Location = new Point(session.X, session.Y);
+                    Size = new Size(session.Width, session.Height);
+                }
+                if (session.Maximized)
+                {
+                    WindowState = FormWindowState.Maximized;
+                }
+
+                foreach (System.Collections.Generic.KeyValuePair<int, Color> kv in session.IslandColors)
+                {
+                    _islandColors[kv.Key] = kv.Value;
+                }
+
+                int maxIslandId = 0;
+                foreach (var tab in session.Tabs)
+                {
+                    if (tab.IslandId > maxIslandId) maxIslandId = tab.IslandId;
+                }
+                _nextIslandId = maxIslandId + 1;
+
+                for (int i = 0; i < session.Tabs.Count; i++)
+                {
+                    var tabData = session.Tabs[i];
+                    if (tabData.IsSuspended)
+                    {
+                        CreateSuspendedTab(tabData.Url, tabData.Title, tabData.IslandId);
+                    }
+                    else
+                    {
+                        await CreateTabAsync(tabData.Url);
+                        BrowserTab lastTab = _tabs.TabPages[_tabs.TabPages.Count - 1].Tag as BrowserTab;
+                        if (lastTab != null)
+                        {
+                            lastTab.IslandId = tabData.IslandId;
+                        }
+                    }
+                }
+
+                int targetIndex = Math.Min(session.ActiveIndex, _tabs.TabPages.Count - 1);
+                _tabs.SelectedIndex = Math.Max(0, targetIndex);
+            }
+            else
+            {
+                await CreateTabAsync(HomeUrl);
+            }
+
             await ShowUpdateNoticeIfNeededAsync();
             _memoryTimer.Start();
             UpdateMemoryMonitor();
@@ -433,6 +505,8 @@ namespace GXLightBrowser
             }
 
             ApplyTabResourcePolicy();
+            EnforceLowResourceLimit();
+            SaveSession();
             return tab;
         }
 
@@ -452,22 +526,9 @@ namespace GXLightBrowser
             web.CoreWebView2.NewWindowRequested += NewWindowRequested;
             web.CoreWebView2.DownloadStarting += DownloadStarting;
             web.CoreWebView2.NavigationStarting += NavigationStarting;
-            web.CoreWebView2.NavigationCompleted += delegate
-            {
-                if (web.Source != null && IsYouTubeHost(web.Source.Host))
-                {
-                    web.CoreWebView2.ExecuteScriptAsync("window.__gxLightRunYouTubeShields && window.__gxLightRunYouTubeShields();");
-                }
-                AddHistoryEntry(page, web);
-                SyncAddress();
-                UpdateStatus();
-            };
-            web.CoreWebView2.DocumentTitleChanged += delegate
-            {
-                string title = web.CoreWebView2.DocumentTitle;
-                page.Text = string.IsNullOrWhiteSpace(title) ? "Pestana" : Trim(title, 30);
-                RebuildTabStrip();
-            };
+            web.CoreWebView2.NavigationCompleted += NavigationCompletedHandler;
+            web.CoreWebView2.DocumentTitleChanged += DocumentTitleChangedHandler;
+            web.CoreWebView2.ProcessFailed += Web_ProcessFailed;
         }
 
         private async void NewWindowRequested(object sender, CoreWebView2NewWindowRequestedEventArgs e)
@@ -520,6 +581,20 @@ namespace GXLightBrowser
             UpdateStatus();
         }
 
+        private static string Base64Decode(string value)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(value)) return "";
+                byte[] bytes = Convert.FromBase64String(value);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
         private void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(e.Source) || !e.Source.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
@@ -537,17 +612,110 @@ namespace GXLightBrowser
                 return;
             }
 
-            const string navigatePrefix = "gxlight:navigate:";
-            if (string.IsNullOrWhiteSpace(message) || !message.StartsWith(navigatePrefix, StringComparison.Ordinal))
+            if (string.IsNullOrWhiteSpace(message))
             {
                 return;
             }
 
-            string url = message.Substring(navigatePrefix.Length);
-            WebView2 web = WebViewForCore(sender as CoreWebView2) ?? ActiveWebView();
-            if (web != null && web.CoreWebView2 != null)
+            const string navigatePrefix = "gxlight:navigate:";
+            if (message.StartsWith(navigatePrefix, StringComparison.Ordinal))
             {
-                Navigate(web, url);
+                string url = message.Substring(navigatePrefix.Length);
+                WebView2 web = WebViewForCore(sender as CoreWebView2) ?? ActiveWebView();
+                if (web != null && web.CoreWebView2 != null)
+                {
+                    Navigate(web, url);
+                }
+                return;
+            }
+
+            const string deletePrefix = "gxlight:bookmarks:delete:";
+            if (message.StartsWith(deletePrefix, StringComparison.Ordinal))
+            {
+                string data = message.Substring(deletePrefix.Length);
+                string[] parts = data.Split('|');
+                if (parts.Length >= 3)
+                {
+                    string title = Base64Decode(parts[0]);
+                    string url = Base64Decode(parts[1]);
+                    string folder = Base64Decode(parts[2]);
+
+                    _bookmarks.RemoveAll(delegate(BookmarkEntry b)
+                    {
+                        return string.Equals(b.Title, title, StringComparison.OrdinalIgnoreCase) &&
+                               string.Equals(b.Url, url, StringComparison.OrdinalIgnoreCase) &&
+                               string.Equals(b.Folder, folder, StringComparison.OrdinalIgnoreCase);
+                    });
+
+                    SaveBookmarks();
+                    RebuildBookmarksBar();
+                    NavigateInternal("bookmarks");
+                }
+                return;
+            }
+
+            const string movePrefix = "gxlight:bookmarks:move:";
+            if (message.StartsWith(movePrefix, StringComparison.Ordinal))
+            {
+                string data = message.Substring(movePrefix.Length);
+                string[] parts = data.Split('|');
+                if (parts.Length >= 4)
+                {
+                    string title = Base64Decode(parts[0]);
+                    string url = Base64Decode(parts[1]);
+                    string folder = Base64Decode(parts[2]);
+                    string newFolder = Base64Decode(parts[3]);
+
+                    for (int i = 0; i < _bookmarks.Count; i++)
+                    {
+                        BookmarkEntry b = _bookmarks[i];
+                        if (string.Equals(b.Title, title, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(b.Url, url, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(b.Folder, folder, StringComparison.OrdinalIgnoreCase))
+                        {
+                            b.Folder = newFolder;
+                            break;
+                        }
+                    }
+
+                    SaveBookmarks();
+                    RebuildBookmarksBar();
+                    NavigateInternal("bookmarks");
+                }
+                return;
+            }
+
+            const string createFolderPrefix = "gxlight:bookmarks:create-folder:";
+            if (message.StartsWith(createFolderPrefix, StringComparison.Ordinal))
+            {
+                string base64Folder = message.Substring(createFolderPrefix.Length);
+                string folderName = Base64Decode(base64Folder);
+                if (!string.IsNullOrWhiteSpace(folderName))
+                {
+                    bool exists = false;
+                    for (int i = 0; i < _bookmarks.Count; i++)
+                    {
+                        if (string.Equals(_bookmarks[i].Folder, folderName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            exists = true;
+                            break;
+                        }
+                    }
+
+                    if (!exists)
+                    {
+                        BookmarkEntry folderPlaceholder = new BookmarkEntry();
+                        folderPlaceholder.Title = folderName;
+                        folderPlaceholder.Url = "";
+                        folderPlaceholder.Folder = folderName;
+                        folderPlaceholder.CreatedUtc = DateTime.UtcNow;
+                        _bookmarks.Add(folderPlaceholder);
+                        SaveBookmarks();
+                        RebuildBookmarksBar();
+                    }
+                    NavigateInternal("bookmarks");
+                }
+                return;
             }
         }
 
@@ -670,21 +838,39 @@ namespace GXLightBrowser
 
         private void Navigate(WebView2 web, string url)
         {
-            if (url == HomeUrl)
+            if (string.IsNullOrWhiteSpace(url)) return;
+
+            string normalized = NormalizeInput(url);
+            if (normalized.StartsWith("gxlight://", StringComparison.OrdinalIgnoreCase))
             {
-                web.NavigateToString(HomeHtml());
-                _address.Text = HomeUrl;
+                string pageName = normalized.Substring("gxlight://".Length).Trim().ToLowerInvariant();
+                if (pageName == "home")
+                {
+                    web.NavigateToString(HomeHtml());
+                    _address.Text = HomeUrl;
+                }
+                else if (pageName == "novedades")
+                {
+                    web.NavigateToString(UpdateNoticeHtml());
+                    _address.Text = UpdatedUrl;
+                }
+                else if (pageName == "extensions")
+                {
+                    Task dummy = NavigateExtensionsPageAsync();
+                }
+                else if (pageName == "free-memory")
+                {
+                    FreeMemoryNow();
+                    NavigateInternal("memory");
+                }
+                else
+                {
+                    NavigateInternal(pageName);
+                }
                 return;
             }
 
-            if (url == UpdatedUrl)
-            {
-                web.NavigateToString(UpdateNoticeHtml());
-                _address.Text = UpdatedUrl;
-                return;
-            }
-
-            web.CoreWebView2.Navigate(NormalizeInput(url));
+            web.CoreWebView2.Navigate(normalized);
         }
 
         private async void NavigateInternal(string pageName)
@@ -756,7 +942,6 @@ namespace GXLightBrowser
             menu.Items.Add("Ver extensiones instaladas", null, async delegate { await ShowExtensionsAsync(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Abrir Chrome Web Store", null, delegate { NavigateActive(ChromeStoreUrl); });
-            menu.Items.Add("Abrir Opera Addons", null, delegate { NavigateActive(OperaAddonsUrl); });
             menu.Show(_extensions, new Point(0, _extensions.Height + 4));
             await Task.FromResult(0);
         }
@@ -820,7 +1005,21 @@ namespace GXLightBrowser
             {
                 if (dialog.ShowDialog(this) == DialogResult.OK)
                 {
+                    _appSettings.RamLimiterEnabled = _gxControl.RamLimiterEnabled;
+                    _appSettings.MemoryLimitMb = _gxControl.MemoryLimitMb;
+                    _appSettings.HardMemoryLimit = _gxControl.HardMemoryLimit;
+                    _appSettings.HotTabsKillerEnabled = _gxControl.HotTabsKillerEnabled;
+                    _appSettings.HotTabsMode = _gxControl.HotTabsMode;
+                    _appSettings.CpuLimiterEnabled = _gxControl.CpuLimiterEnabled;
+                    _appSettings.CpuLimitPercent = _gxControl.CpuLimitPercent;
+                    _appSettings.NetworkLimiterEnabled = _gxControl.NetworkLimiterEnabled;
+                    _appSettings.NetworkProfile = _gxControl.NetworkProfile;
+                    _appSettings.LowResourcesModeEnabled = _gxControl.LowResourcesModeEnabled;
+                    _appSettings.MaxActiveTabs = _gxControl.MaxActiveTabs;
+                    _appSettings.Save();
+
                     EnforceMemoryLimit();
+                    EnforceLowResourceLimit();
                     UpdateMemoryMonitor();
                 }
             }
@@ -958,10 +1157,7 @@ namespace GXLightBrowser
                 entry.Url = DecodeField(parts[1]);
                 entry.Folder = DecodeField(parts[2]);
                 entry.CreatedUtc = parts.Length > 3 ? new DateTime(ParseLong(parts[3], DateTime.UtcNow.Ticks), DateTimeKind.Utc) : DateTime.UtcNow;
-                if (!string.IsNullOrWhiteSpace(entry.Url))
-                {
-                    _bookmarks.Add(entry);
-                }
+                _bookmarks.Add(entry);
             }
         }
 
@@ -980,12 +1176,110 @@ namespace GXLightBrowser
             File.WriteAllText(AppPaths.Bookmarks, builder.ToString(), Encoding.UTF8);
         }
 
+        private void ShowFolderDropdownMenu(string folderName, Control owner)
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+
+            List<BookmarkEntry> folderItems = new List<BookmarkEntry>();
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                if (string.Equals(entry.Folder, folderName, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(entry.Url))
+                {
+                    folderItems.Add(entry);
+                }
+            }
+
+            if (folderItems.Count == 0)
+            {
+                menu.Items.Add("(Vacio)").Enabled = false;
+            }
+            else
+            {
+                for (int i = 0; i < folderItems.Count; i++)
+                {
+                    BookmarkEntry entry = folderItems[i];
+                    string label = Trim(string.IsNullOrWhiteSpace(entry.Title) ? entry.Url : entry.Title, 30);
+                    ToolStripMenuItem item = new ToolStripMenuItem(label);
+                    item.Click += delegate { NavigateActive(entry.Url); };
+                    menu.Items.Add(item);
+                }
+            }
+            menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
+        private void ShowFolderContextMenu(string folderName, Control owner)
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+
+            menu.Items.Add("Eliminar carpeta y su contenido", null, delegate
+            {
+                if (MessageBox.Show(this, "¿Seguro que deseas eliminar la carpeta '" + folderName + "' y todos sus favoritos?", "Eliminar carpeta", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                {
+                    _bookmarks.RemoveAll(delegate(BookmarkEntry b)
+                    {
+                        return string.Equals(b.Folder, folderName, StringComparison.OrdinalIgnoreCase);
+                    });
+                    SaveBookmarks();
+                    RebuildBookmarksBar();
+                }
+            });
+            menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
         private void RebuildBookmarksBar()
         {
             _bookmarksBar.SuspendLayout();
             _bookmarksBar.Controls.Clear();
 
-            if (_bookmarks.Count == 0)
+            List<string> folders = new List<string>();
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                string f = _bookmarks[i].Folder;
+                if (!string.IsNullOrWhiteSpace(f) &&
+                    !string.Equals(f, "Favorites bar", StringComparison.OrdinalIgnoreCase) &&
+                    !folders.Contains(f))
+                {
+                    folders.Add(f);
+                }
+            }
+
+            for (int i = 0; i < folders.Count; i++)
+            {
+                string folderName = folders[i];
+                ChromeButton folderBtn = new ChromeButton();
+                ConfigureButton(folderBtn, "📁 " + Trim(folderName, 15), 110, "Carpeta: " + folderName);
+                folderBtn.Height = 24;
+                folderBtn.Margin = new Padding(0, 1, 6, 1);
+                folderBtn.Click += delegate { ShowFolderDropdownMenu(folderName, folderBtn); };
+                folderBtn.MouseUp += delegate(object sender, MouseEventArgs e)
+                {
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        ShowFolderContextMenu(folderName, folderBtn);
+                    }
+                };
+                _bookmarksBar.Controls.Add(folderBtn);
+            }
+
+            List<BookmarkEntry> rootBookmarks = new List<BookmarkEntry>();
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                if ((string.IsNullOrWhiteSpace(entry.Folder) || string.Equals(entry.Folder, "Favorites bar", StringComparison.OrdinalIgnoreCase)) &&
+                    !string.IsNullOrWhiteSpace(entry.Url))
+                {
+                    rootBookmarks.Add(entry);
+                }
+            }
+
+            if (folders.Count == 0 && rootBookmarks.Count == 0)
             {
                 ChromeButton add = new ChromeButton();
                 ConfigureButton(add, "+ Bookmark", 100, "Guardar pagina actual en favoritos");
@@ -997,10 +1291,10 @@ namespace GXLightBrowser
                 return;
             }
 
-            int limit = Math.Min(_bookmarks.Count, Width < 900 ? 5 : 10);
+            int limit = Math.Min(rootBookmarks.Count, Width < 900 ? 5 : 10);
             for (int i = 0; i < limit; i++)
             {
-                BookmarkEntry entry = _bookmarks[i];
+                BookmarkEntry entry = rootBookmarks[i];
                 ChromeButton button = new ChromeButton();
                 ConfigureButton(button, Trim(string.IsNullOrWhiteSpace(entry.Title) ? entry.Url : entry.Title, 18), Width < 900 ? 92 : 132, entry.Url);
                 button.Height = 24;
@@ -1130,38 +1424,55 @@ namespace GXLightBrowser
         private int ImportBookmarksFromHtml(string html)
         {
             int added = 0;
-            string folder = "Imported";
+            Stack<string> folders = new Stack<string>();
+            string pendingFolder = null;
+
             Regex folderRegex = new Regex("<H3[^>]*>(?<title>.*?)</H3>", RegexOptions.IgnoreCase);
             Regex linkRegex = new Regex("<A\\s+[^>]*HREF\\s*=\\s*(\"|')(?<url>.*?)\\1[^>]*>(?<title>.*?)</A>", RegexOptions.IgnoreCase);
             string[] lines = html.Replace("\r", string.Empty).Split('\n');
             for (int i = 0; i < lines.Length; i++)
             {
-                Match folderMatch = folderRegex.Match(lines[i]);
+                string line = lines[i].Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+
+                Match folderMatch = folderRegex.Match(line);
                 if (folderMatch.Success)
                 {
-                    folder = CleanImportedText(folderMatch.Groups["title"].Value);
-                    continue;
+                    pendingFolder = CleanImportedText(folderMatch.Groups["title"].Value);
                 }
 
-                Match linkMatch = linkRegex.Match(lines[i]);
-                if (!linkMatch.Success)
+                if (line.IndexOf("<DL", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    continue;
+                    string folderToPush = pendingFolder ?? (folders.Count == 0 ? "Favorites bar" : folders.Peek());
+                    folders.Push(folderToPush);
+                    pendingFolder = null;
                 }
 
-                string url = WebUtility.HtmlDecode(linkMatch.Groups["url"].Value);
-                if (string.IsNullOrWhiteSpace(url) || BookmarkExists(url))
+                if (line.IndexOf("</DL", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    continue;
+                    if (folders.Count > 0)
+                    {
+                        folders.Pop();
+                    }
                 }
 
-                BookmarkEntry entry = new BookmarkEntry();
-                entry.Url = url;
-                entry.Title = CleanImportedText(linkMatch.Groups["title"].Value);
-                entry.Folder = string.IsNullOrWhiteSpace(folder) ? "Imported" : folder;
-                entry.CreatedUtc = DateTime.UtcNow;
-                _bookmarks.Add(entry);
-                added++;
+                Match linkMatch = linkRegex.Match(line);
+                if (linkMatch.Success)
+                {
+                    string url = WebUtility.HtmlDecode(linkMatch.Groups["url"].Value);
+                    if (string.IsNullOrWhiteSpace(url) || BookmarkExists(url))
+                    {
+                        continue;
+                    }
+
+                    BookmarkEntry entry = new BookmarkEntry();
+                    entry.Url = url;
+                    entry.Title = CleanImportedText(linkMatch.Groups["title"].Value);
+                    entry.Folder = folders.Count > 0 ? folders.Peek() : "Imported";
+                    entry.CreatedUtc = DateTime.UtcNow;
+                    _bookmarks.Add(entry);
+                    added++;
+                }
             }
 
             return added;
@@ -1621,6 +1932,7 @@ namespace GXLightBrowser
             _tabs.TabPages.Remove(page);
             if (tab != null && tab.WebView != null)
             {
+                UnsubscribeWebViewEvents(tab.WebView);
                 tab.WebView.Dispose();
             }
             page.Dispose();
@@ -1634,6 +1946,7 @@ namespace GXLightBrowser
             RebuildTabStrip();
             SyncAddress();
             UpdateStatus();
+            SaveSession();
         }
 
         private void ApplyTabResourcePolicy()
@@ -1724,9 +2037,16 @@ namespace GXLightBrowser
             for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
                 BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
-                if (tab != null && _tabs.TabPages[i] != _tabs.SelectedTab && !tab.IsSuspended && tab.LastActiveUtc < cutoff && _gxControl.HotTabsKillerEnabled)
+                if (tab != null && _tabs.TabPages[i] != _tabs.SelectedTab && !tab.IsSuspended && tab.LastActiveUtc < cutoff)
                 {
-                    SuspendTab(tab);
+                    if (tab.WebView != null && tab.WebView.CoreWebView2 != null && tab.WebView.CoreWebView2.IsDocumentPlayingAudio)
+                    {
+                        continue;
+                    }
+                    if (_gxControl.HotTabsKillerEnabled)
+                    {
+                        SuspendTab(tab);
+                    }
                 }
             }
         }
@@ -1738,6 +2058,10 @@ namespace GXLightBrowser
                 BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
                 if (tab != null && _tabs.TabPages[i] != _tabs.SelectedTab && !tab.IsSuspended)
                 {
+                    if (tab.WebView != null && tab.WebView.CoreWebView2 != null && tab.WebView.CoreWebView2.IsDocumentPlayingAudio)
+                    {
+                        continue;
+                    }
                     SuspendTab(tab);
                 }
             }
@@ -1751,6 +2075,11 @@ namespace GXLightBrowser
             {
                 BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
                 if (tab == null || tab.IsSuspended || _tabs.TabPages[i] == _tabs.SelectedTab)
+                {
+                    continue;
+                }
+
+                if (tab.WebView != null && tab.WebView.CoreWebView2 != null && tab.WebView.CoreWebView2.IsDocumentPlayingAudio)
                 {
                     continue;
                 }
@@ -1777,46 +2106,21 @@ namespace GXLightBrowser
                 return;
             }
 
+            Logger.Info("Suspending tab: " + tab.Page.Text);
             tab.SuspendedUrl = tab.WebView.Source == null || tab.WebView.Source.ToString() == "about:blank" ? HomeUrl : tab.WebView.Source.ToString();
-            tab.SuspendedTitle = tab.Page.Text;
+            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "");
+            
+            UnsubscribeWebViewEvents(tab.WebView);
+
             tab.Page.Controls.Clear();
             tab.WebView.Dispose();
             tab.WebView = null;
             tab.IsSuspended = true;
 
-            Panel placeholder = new Panel();
-            placeholder.Dock = DockStyle.Fill;
-            placeholder.BackColor = Theme.Window;
-
-            Label title = new Label();
-            title.Text = "Pestana suspendida para ahorrar memoria";
-            title.ForeColor = Theme.Text;
-            title.Font = new Font("Segoe UI", 16f, FontStyle.Bold);
-            title.AutoSize = true;
-            title.Left = 40;
-            title.Top = 40;
-            placeholder.Controls.Add(title);
-
-            Label url = new Label();
-            url.Text = tab.SuspendedUrl;
-            url.ForeColor = Theme.Muted;
-            url.AutoSize = true;
-            url.Left = 42;
-            url.Top = 82;
-            placeholder.Controls.Add(url);
-
-            ChromeButton restore = new ChromeButton();
-            restore.Text = "Restaurar pestana";
-            restore.Width = 150;
-            restore.Height = 34;
-            restore.Left = 42;
-            restore.Top = 118;
-            restore.Click += async delegate { await RestoreSuspendedTabAsync(tab); };
-            placeholder.Controls.Add(restore);
-
-            tab.Page.Controls.Add(placeholder);
+            SetupSuspensionPlaceholder(tab);
             tab.Page.Text = "[Suspended] " + Trim(tab.SuspendedTitle, 18);
             RebuildTabStrip();
+            SaveSession();
         }
 
         private async Task RestoreSuspendedTabAsync(BrowserTab tab)
@@ -1840,6 +2144,8 @@ namespace GXLightBrowser
             Navigate(web, string.IsNullOrWhiteSpace(tab.SuspendedUrl) ? HomeUrl : tab.SuspendedUrl);
             tab.Page.Text = string.IsNullOrWhiteSpace(tab.SuspendedTitle) ? "Restored" : tab.SuspendedTitle;
             RebuildTabStrip();
+            EnforceLowResourceLimit();
+            SaveSession();
         }
 
         private int CalculateTabWidth()
@@ -1932,7 +2238,6 @@ namespace GXLightBrowser
             _shield.Width = compact ? 72 : 106;
 
             _chromeStore.Visible = !veryCompact;
-            _operaAddons.Visible = !veryCompact;
             RebuildTabStrip();
             RebuildBookmarksBar();
         }
@@ -2236,7 +2541,7 @@ namespace GXLightBrowser
                 case "passwords":
                     return HtmlShell("Passwords and autofill", PasswordsHtml());
                 case "bookmarks":
-                    return HtmlShell("Bookmarks", BookmarksHtml());
+                    return BookmarksHtml();
                 case "memory":
                     return HtmlShell("Memory monitor",
                         "<p>Estimated browser memory: <b>" + EstimateBrowserMemoryMb() + " MB</b></p>" +
@@ -2245,7 +2550,9 @@ namespace GXLightBrowser
                         "<p>Hot tabs killer: <b>" + (_gxControl.HotTabsKillerEnabled ? _gxControl.HotTabsMode : "Off") + "</b></p>" +
                         "<p>CPU limiter policy: <b>" + (_gxControl.CpuLimiterEnabled ? _gxControl.CpuLimitPercent + "%" : "Off") + "</b></p>" +
                         "<p>Network limiter policy: <b>" + (_gxControl.NetworkLimiterEnabled ? _gxControl.NetworkProfile : "Off") + "</b></p>" +
-                        "<p>Inactive tabs are moved to low-memory mode and can be suspended/discarded to free their WebView.</p>");
+                        "<p>Low Resource Mode: <b>" + (_gxControl.LowResourcesModeEnabled ? "On (Max active: " + _gxControl.MaxActiveTabs + ")" : "Off") + "</b></p>" +
+                        "<p>Inactive tabs are moved to low-memory mode and can be suspended/discarded to free their WebView.</p>" +
+                        GetMemoryProcessesHtml());
                 case "shields":
                     return HtmlShell("Shields and Privacy Firewall",
                         "<p>Ad blocker: <b>" + (_adBlockEnabled ? "enabled" : "disabled") + "</b></p>" +
@@ -2264,7 +2571,7 @@ namespace GXLightBrowser
             BrowserTab tab = ActiveTab();
             StringBuilder body = new StringBuilder();
             body.Append("<p>Import unpacked Chrome/Edge extensions from the main menu.</p>");
-            body.Append("<p><a href='" + ChromeStoreUrl + "'>Chrome Web Store</a> &nbsp; <a href='" + OperaAddonsUrl + "'>Opera Addons</a></p>");
+            body.Append("<p><a href='" + ChromeStoreUrl + "'>Chrome Web Store</a></p>");
 
             if (tab != null && tab.WebView != null && tab.WebView.CoreWebView2 != null)
             {
@@ -2331,27 +2638,123 @@ namespace GXLightBrowser
             return body.ToString();
         }
 
-        private string BookmarksHtml()
+        private static string SafeJsString(string value)
         {
-            StringBuilder body = new StringBuilder();
-            body.Append("<p><b>").Append(_bookmarks.Count).Append("</b> bookmarks guardados. Usa Menu > Bookmarks para importar, exportar o guardar la pagina actual.</p>");
-            if (_bookmarks.Count == 0)
-            {
-                body.Append("<p>No hay bookmarks todavia.</p>");
-                return body.ToString();
-            }
+            if (string.IsNullOrEmpty(value)) return "";
+            return value.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
+        }
 
-            body.Append("<table><tr><th>Title</th><th>Folder</th><th>URL</th><th>Added</th></tr>");
+        private string BookmarksJson()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.Append("[");
             for (int i = 0; i < _bookmarks.Count; i++)
             {
                 BookmarkEntry entry = _bookmarks[i];
-                body.Append("<tr><td>").Append(EscapeHtml(entry.Title)).Append("</td><td>")
-                    .Append(EscapeHtml(entry.Folder)).Append("</td><td><a href='")
-                    .Append(EscapeHtml(entry.Url)).Append("'>").Append(EscapeHtml(entry.Url)).Append("</a></td><td>")
-                    .Append(entry.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td></tr>");
+                if (i > 0) sb.Append(",");
+                sb.Append("{")
+                  .Append("\"title\":\"").Append(SafeJsString(entry.Title)).Append("\",")
+                  .Append("\"url\":\"").Append(SafeJsString(entry.Url)).Append("\",")
+                  .Append("\"folder\":\"").Append(SafeJsString(entry.Folder)).Append("\",")
+                  .Append("\"created\":").Append((long)(entry.CreatedUtc - new DateTime(1970, 1, 1)).TotalMilliseconds)
+                  .Append("}");
             }
-            body.Append("</table>");
-            return body.ToString();
+            sb.Append("]");
+            return sb.ToString();
+        }
+
+        private string BookmarksHtml()
+        {
+            string json = BookmarksJson();
+            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                "<title>Bookmarks Manager</title>" +
+                "<style>" +
+                "body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif;display:flex;min-height:100vh}" +
+                "aside{width:240px;background:#13171f;border-right:1px solid #222936;padding:20px;display:flex;flex-direction:column;gap:15px}" +
+                "aside h2{color:#72f5ff;font-size:16px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:8px}" +
+                ".folder-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px}" +
+                ".folder-item{padding:8px 12px;cursor:pointer;border-radius:4px;transition:background .2s,color .2s;display:flex;align-items:center;gap:8px;color:#aeb8c4;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}" +
+                ".folder-item:hover,.folder-item.active{background:#1c2331;color:#72f5ff}" +
+                ".btn-new-folder{background:transparent;border:1px dashed #484d5c;color:#aeb8c4;padding:10px;border-radius:4px;cursor:pointer;text-align:center;font-size:13px;transition:border-color .2s,color .2s;margin-top:10px}" +
+                ".btn-new-folder:hover{border-color:#72f5ff;color:#72f5ff}" +
+                "main{flex:1;padding:30px;display:flex;flex-direction:column;gap:20px}" +
+                ".header-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}" +
+                "h1{color:#72f5ff;font-size:28px;margin:0}" +
+                ".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:300px;display:flex;align-items:center}" +
+                ".search-box input{background:transparent;border:none;color:#fff;font-size:14px;outline:none;width:100%}" +
+                ".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:hidden}" +
+                "table{border-collapse:collapse;width:100%;text-align:left}" +
+                "th,td{padding:12px 16px;border-bottom:1px solid #222936;font-size:14px}" +
+                "th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:12px;letter-spacing:.5px}" +
+                "tr:last-child td{border-bottom:none}" +
+                "tr:hover td{background:#171c26}" +
+                "a{color:#72f5ff;text-decoration:none;word-break:break-all}" +
+                "a:hover{text-decoration:underline}" +
+                ".actions{display:flex;align-items:center;gap:10px}" +
+                ".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s}" +
+                ".btn-delete:hover{background:rgba(255,107,107,.1)}" +
+                "select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:13px}" +
+                "select:hover{border-color:#72f5ff}" +
+                "</style></head><body>" +
+                "<aside><h2>📁 Carpetas</h2><ul class='folder-list' id='folderList'></ul><button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button></aside>" +
+                "<main><div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1><div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div></div>" +
+                "<div class='table-container'><table><thead><tr><th>Título</th><th>URL</th><th>Carpeta</th><th>Acciones</th></tr></thead>" +
+                "<tbody id='bookmarksTableBody'></tbody></table></div></main>" +
+                "<script>" +
+                "const bookmarks=" + json + ";" +
+                "let activeFilter='all';" +
+                "bookmarks.forEach((b,idx)=>b.originalIndex=idx);" +
+                "function getFolders(){const folders=new Set();bookmarks.forEach(b=>{if(b.folder&&b.folder.trim()!==''){folders.add(b.folder);}});return Array.from(folders);}" +
+                "function renderFolders(){const folderList=document.getElementById('folderList');const uniqueFolders=getFolders();" +
+                "let html='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(\\'all\\')\">📂 Todos</li>'+" +
+                "'<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(\\'Favorites bar\\')\">⭐ Barra</li>';" +
+                "uniqueFolders.forEach(f=>{if(f!=='Favorites bar'){" +
+                "html+='<li class=\"folder-item '+(activeFilter===f?\"active\":\"\")+'\" onclick=\"filterFolder(\\''+escapeJs(f)+'\\')\">📁 '+escapeHtml(f)+'</li>';" +
+                "}});" +
+                "folderList.innerHTML=html;}" +
+                "function filterFolder(folder){activeFilter=folder;document.getElementById('pageTitle').innerText=folder==='all'?'Todos':folder;renderFolders();renderBookmarks();}" +
+                "function renderBookmarks(){const tbody=document.getElementById('bookmarksTableBody');const search=document.getElementById('searchInput').value.toLowerCase();const uniqueFolders=getFolders();" +
+                "if(!uniqueFolders.includes('Favorites bar')){uniqueFolders.push('Favorites bar');}" +
+                "let filtered=bookmarks;" +
+                "if(activeFilter==='all'){filtered=bookmarks.filter(b=>b.url&&b.url.trim()!=='');}else{filtered=bookmarks.filter(b=>b.folder===activeFilter);}" +
+                "if(search){filtered=filtered.filter(b=>(b.title&&b.title.toLowerCase().includes(search))||(b.url&&b.url.toLowerCase().includes(search)));}" +
+                "let html='';" +
+                "if(filtered.length===0){html='<tr><td colspan=\"4\" style=\"text-align:center;color:#aeb8c4;\">No hay favoritos en esta seccion.</td></tr>';}" +
+                "else{filtered.forEach(b=>{" +
+                "const isPlaceholder=!b.url||b.url.trim()==='';" +
+                "const displayUrl=isPlaceholder?'<i>(Carpeta Vacia)</i>':('<a href=\"#\" onclick=\"navigate('+b.originalIndex+');return false;\">'+escapeHtml(b.url)+'</a>');" +
+                "let folderOptions='';" +
+                "uniqueFolders.forEach(f=>{" +
+                "folderOptions+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';" +
+                "});" +
+                "html+='<tr><td style=\"font-weight:500;\">'+escapeHtml(b.title||'Sin titulo')+'</td><td>'+displayUrl+'</td><td><select onchange=\"moveBookmark('+b.originalIndex+',this.value)\">'+folderOptions+'</select></td><td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteBookmark('+b.originalIndex+')\">Eliminar</button></div></td></tr>';" +
+                "});}" +
+                "tbody.innerHTML=html;}" +
+                "function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}" +
+                "function createNewFolder(){const name=prompt('Nombre de la nueva carpeta:');if(name&&name.trim()!==''){" +
+                "const base64Folder=btoa(unescape(encodeURIComponent(name.trim())));" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+base64Folder);" +
+                "}}" +
+                "function deleteBookmark(idx){" +
+                "const b=bookmarks[idx];" +
+                "if(confirm('¿Seguro que quieres eliminar este favorito?')){" +
+                "const b64Title=btoa(unescape(encodeURIComponent(b.title||\"\")));" +
+                "const b64Url=btoa(unescape(encodeURIComponent(b.url||\"\")));" +
+                "const b64Folder=btoa(unescape(encodeURIComponent(b.folder||\"\")));" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64Title+'|'+b64Url+'|'+b64Folder);" +
+                "}}" +
+                "function moveBookmark(idx,newFolder){" +
+                "const b=bookmarks[idx];" +
+                "const b64Title=btoa(unescape(encodeURIComponent(b.title||\"\")));" +
+                "const b64Url=btoa(unescape(encodeURIComponent(b.url||\"\")));" +
+                "const b64Folder=btoa(unescape(encodeURIComponent(b.folder||\"\")));" +
+                "const b64NewFolder=btoa(unescape(encodeURIComponent(newFolder)));" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64Title+'|'+b64Url+'|'+b64Folder+'|'+b64NewFolder);" +
+                "}" +
+                "function escapeHtml(str){if(!str)return '';return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}" +
+                "function escapeJs(str){if(!str)return '';return str.replace(/\\\\/g,'\\\\\\\\').replace(/\\'/g,'\\\\\\'').replace(/\"/g,'\\\\\"');}" +
+                "renderFolders();renderBookmarks();" +
+                "</script></body></html>";
         }
 
         private string PasswordsHtml()
@@ -2429,7 +2832,6 @@ namespace GXLightBrowser
                 "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegacion ligera con bloqueo nativo, extensiones locales y accesos rapidos.</p>" +
                 "<form class='search' action='https://duckduckgo.com/'><input name='q' autofocus placeholder='Buscar o escribir una URL'><button>Buscar</button></form>" +
                 "<div class='grid'><article class='card'><b>Chrome Web Store</b><a class='link' href='" + ChromeStoreUrl + "'>Abrir tienda</a></article>" +
-                "<article class='card'><b>Opera Addons</b><a class='link' href='" + OperaAddonsUrl + "'>Abrir tienda</a></article>" +
                 "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extension.</span></article></div>" +
                 "</section></main></body></html>";
         }
@@ -2482,6 +2884,357 @@ namespace GXLightBrowser
                 "! GX Light local filters" + Environment.NewLine +
                 "! Add EasyList/EasyPrivacy content here or run scripts\\Update-Filters.ps1" + Environment.NewLine,
                 System.Text.Encoding.UTF8);
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+        private static extern bool SetProcessWorkingSetSize(IntPtr process, IntPtr minSize, IntPtr maxSize);
+
+        private void NavigationCompletedHandler(object sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            CoreWebView2 core = sender as CoreWebView2;
+            if (core == null) return;
+            WebView2 web = WebViewForCore(core);
+            if (web == null) return;
+            TabPage page = PageForWebView(web);
+            if (page == null) return;
+
+            if (web.Source != null && IsYouTubeHost(web.Source.Host))
+            {
+                core.ExecuteScriptAsync("window.__gxLightRunYouTubeShields && window.__gxLightRunYouTubeShields();");
+            }
+            AddHistoryEntry(page, web);
+            SyncAddress();
+            UpdateStatus();
+        }
+
+        private void DocumentTitleChangedHandler(object sender, object e)
+        {
+            CoreWebView2 core = sender as CoreWebView2;
+            if (core == null) return;
+            WebView2 web = WebViewForCore(core);
+            if (web == null) return;
+            TabPage page = PageForWebView(web);
+            if (page == null) return;
+
+            string title = core.DocumentTitle;
+            page.Text = string.IsNullOrWhiteSpace(title) ? "Pestana" : Trim(title, 30);
+            RebuildTabStrip();
+        }
+
+        private TabPage PageForWebView(WebView2 web)
+        {
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.WebView == web)
+                {
+                    return _tabs.TabPages[i];
+                }
+            }
+            return null;
+        }
+
+        private void UnsubscribeWebViewEvents(WebView2 web)
+        {
+            if (web == null) return;
+            try
+            {
+                if (web.CoreWebView2 != null)
+                {
+                    web.CoreWebView2.ProcessFailed -= Web_ProcessFailed;
+                    web.CoreWebView2.WebResourceRequested -= WebResourceRequested;
+                    web.CoreWebView2.NewWindowRequested -= NewWindowRequested;
+                    web.CoreWebView2.DownloadStarting -= DownloadStarting;
+                    web.CoreWebView2.NavigationStarting -= NavigationStarting;
+                    web.CoreWebView2.NavigationCompleted -= NavigationCompletedHandler;
+                    web.CoreWebView2.DocumentTitleChanged -= DocumentTitleChangedHandler;
+                    web.CoreWebView2.WebMessageReceived -= WebMessageReceived;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error unsubscribing events: " + ex.Message);
+            }
+        }
+
+        private void Web_ProcessFailed(object sender, CoreWebView2ProcessFailedEventArgs e)
+        {
+            WebView2 web = sender as WebView2;
+            if (web == null) return;
+
+            Logger.Error("WebView2 process failed. Kind: " + e.ProcessFailedKind + ", Reason: " + e.Reason + ", ExitCode: " + e.ExitCode);
+
+            BrowserTab tab = null;
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab t = _tabs.TabPages[i].Tag as BrowserTab;
+                if (t != null && t.WebView == web)
+                {
+                    tab = t;
+                    break;
+                }
+            }
+
+            if (tab != null)
+            {
+                ShowCrashRecovery(tab, "El proceso de la pestaña falló (" + e.ProcessFailedKind + ").");
+            }
+        }
+
+        private void ShowCrashRecovery(BrowserTab tab, string message)
+        {
+            if (tab == null || tab.WebView == null)
+            {
+                return;
+            }
+
+            tab.SuspendedUrl = tab.WebView.Source == null ? HomeUrl : tab.WebView.Source.ToString();
+            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "");
+
+            UnsubscribeWebViewEvents(tab.WebView);
+
+            tab.Page.Controls.Clear();
+            tab.WebView.Dispose();
+            tab.WebView = null;
+            tab.IsSuspended = true;
+
+            Panel placeholder = new Panel();
+            placeholder.Dock = DockStyle.Fill;
+            placeholder.BackColor = Theme.Window;
+
+            Label title = new Label();
+            title.Text = "La pagina ha fallado (Crash)";
+            title.ForeColor = Theme.Warning;
+            title.Font = new Font("Segoe UI", 16f, FontStyle.Bold);
+            title.AutoSize = true;
+            title.Left = 40;
+            title.Top = 40;
+            placeholder.Controls.Add(title);
+
+            Label detail = new Label();
+            detail.Text = message + "\nURL: " + tab.SuspendedUrl;
+            detail.ForeColor = Theme.Muted;
+            detail.AutoSize = true;
+            detail.Left = 42;
+            detail.Top = 82;
+            placeholder.Controls.Add(detail);
+
+            ChromeButton reload = new ChromeButton();
+            reload.Text = "Recargar pagina";
+            reload.Width = 150;
+            reload.Height = 34;
+            reload.Left = 42;
+            reload.Top = 140;
+            reload.Click += async delegate { await RestoreSuspendedTabAsync(tab); };
+            placeholder.Controls.Add(reload);
+
+            tab.Page.Controls.Add(placeholder);
+            tab.Page.Text = "[Crashed] " + Trim(tab.SuspendedTitle, 18);
+            RebuildTabStrip();
+        }
+
+        private void SetupSuspensionPlaceholder(BrowserTab tab)
+        {
+            Panel placeholder = new Panel();
+            placeholder.Dock = DockStyle.Fill;
+            placeholder.BackColor = Theme.Window;
+
+            Label title = new Label();
+            title.Text = "Pestana suspendida para ahorrar memoria";
+            title.ForeColor = Theme.Text;
+            title.Font = new Font("Segoe UI", 16f, FontStyle.Bold);
+            title.AutoSize = true;
+            title.Left = 40;
+            title.Top = 40;
+            placeholder.Controls.Add(title);
+
+            Label urlLabel = new Label();
+            urlLabel.Text = tab.SuspendedUrl;
+            urlLabel.ForeColor = Theme.Muted;
+            urlLabel.AutoSize = true;
+            urlLabel.Left = 42;
+            urlLabel.Top = 82;
+            placeholder.Controls.Add(urlLabel);
+
+            ChromeButton restore = new ChromeButton();
+            restore.Text = "Restaurar pestana";
+            restore.Width = 150;
+            restore.Height = 34;
+            restore.Left = 42;
+            restore.Top = 118;
+            restore.Click += async delegate { await RestoreSuspendedTabAsync(tab); };
+            placeholder.Controls.Add(restore);
+
+            tab.Page.Controls.Add(placeholder);
+        }
+
+        private BrowserTab CreateSuspendedTab(string url, string title, int islandId)
+        {
+            TabPage page = new TabPage("[Suspended] " + Trim(title, 18));
+            page.BackColor = Theme.Window;
+
+            BrowserTab tab = new BrowserTab(page, null);
+            tab.IslandId = islandId;
+            tab.IsSuspended = true;
+            tab.SuspendedUrl = url;
+            tab.SuspendedTitle = title;
+            page.Tag = tab;
+
+            SetupSuspensionPlaceholder(tab);
+            _tabs.TabPages.Add(page);
+            RebuildTabStrip();
+            SaveSession();
+            return tab;
+        }
+
+        private void SaveSession()
+        {
+            try
+            {
+                bool maximized = WindowState == FormWindowState.Maximized;
+                int x = Location.X;
+                int y = Location.Y;
+                int width = Width;
+                int height = Height;
+
+                if (WindowState == FormWindowState.Minimized)
+                {
+                    x = -1; y = -1;
+                }
+
+                int activeIndex = _tabs.SelectedIndex;
+                List<BrowserTab> tabsList = new List<BrowserTab>();
+                for (int i = 0; i < _tabs.TabPages.Count; i++)
+                {
+                    BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                    if (tab != null)
+                    {
+                        tabsList.Add(tab);
+                    }
+                }
+
+                SessionManager.SaveSession(maximized, x, y, width, height, activeIndex, _islandColors, tabsList);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to save session from form: " + ex.Message);
+            }
+        }
+
+        private void EnforceLowResourceLimit()
+        {
+            if (!_gxControl.LowResourcesModeEnabled)
+            {
+                return;
+            }
+
+            int activeCount = 0;
+            List<BrowserTab> activeTabs = new List<BrowserTab>();
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && !tab.IsSuspended)
+                {
+                    activeCount++;
+                    if (_tabs.TabPages[i] != _tabs.SelectedTab)
+                    {
+                        activeTabs.Add(tab);
+                    }
+                }
+            }
+
+            int limit = _gxControl.MaxActiveTabs;
+            if (activeCount > limit && activeTabs.Count > 0)
+            {
+                activeTabs.Sort(delegate(BrowserTab a, BrowserTab b) {
+                    return a.LastActiveUtc.CompareTo(b.LastActiveUtc);
+                });
+
+                int toSuspend = activeCount - limit;
+                int suspendedCount = 0;
+                for (int i = 0; i < activeTabs.Count && suspendedCount < toSuspend; i++)
+                {
+                    BrowserTab tab = activeTabs[i];
+                    if (tab.WebView != null && tab.WebView.CoreWebView2 != null)
+                    {
+                        if (tab.WebView.CoreWebView2.IsDocumentPlayingAudio)
+                        {
+                            continue;
+                        }
+                    }
+                    SuspendTab(tab);
+                    suspendedCount++;
+                }
+            }
+        }
+
+        private void FreeMemoryNow()
+        {
+            Logger.Info("Manually requesting memory release...");
+            SuspendIdleTabsNow();
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+
+            try
+            {
+                SetProcessWorkingSetSize(Process.GetCurrentProcess().Handle, (IntPtr)(-1), (IntPtr)(-1));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to trim working set: " + ex.Message);
+            }
+
+            Logger.Info("Memory release complete.");
+        }
+
+        private string GetMemoryProcessesHtml()
+        {
+            if (_environment == null)
+            {
+                return "<p>No active WebView2 environment.</p>";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.Append("<h3>Active WebView2 Processes</h3>");
+            sb.Append("<table><tr><th>Process ID</th><th>Type</th><th>Memory (Working Set)</th></tr>");
+
+            try
+            {
+                var infos = _environment.GetProcessInfos();
+                if (infos != null)
+                {
+                    long total = 0;
+                    foreach (var info in infos)
+                    {
+                        string typeStr = info.Kind.ToString();
+                        string memStr = "Unknown";
+                        try
+                        {
+                            using (Process p = Process.GetProcessById((int)info.ProcessId))
+                            {
+                                long memMb = p.WorkingSet64 / (1024 * 1024);
+                                memStr = memMb + " MB";
+                                total += memMb;
+                            }
+                        }
+                        catch
+                        {
+                            memStr = "Access Denied / Exited";
+                        }
+                        sb.Append("<tr><td>" + info.ProcessId + "</td><td>" + typeStr + "</td><td>" + memStr + "</td></tr>");
+                    }
+                    sb.Append("<tr style='font-weight:bold;color:#72f5ff;'><td>Total Environment</td><td>-</td><td>" + total + " MB</td></tr>");
+                }
+            }
+            catch (Exception ex)
+            {
+                sb.Append("<tr><td colspan='3'>Error retrieving processes: " + EscapeHtml(ex.Message) + "</td></tr>");
+            }
+            sb.Append("</table>");
+            sb.Append("<div style='margin-top:20px;'><button onclick='location.href=\"gxlight://free-memory\"' style='background:#72f5ff;color:#061116;border:0;padding:10px 20px;font-weight:700;cursor:pointer;'>Liberar memoria ahora</button></div>");
+
+            return sb.ToString();
         }
 
         private sealed class HistoryEntry
