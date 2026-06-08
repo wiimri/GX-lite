@@ -16,7 +16,7 @@
       min-height: 100vh;
       display: grid;
       grid-template-columns: 62px minmax(0, 1fr);
-      grid-template-rows: 94px minmax(0, 1fr) 28px;
+      grid-template-rows: 124px minmax(0, 1fr) 28px;
     }
     .side {
       grid-row: 1 / 4;
@@ -30,7 +30,7 @@
       background: #1f212a;
       padding: 6px 10px 7px 8px;
       display: grid;
-      grid-template-rows: 34px 1fr;
+      grid-template-rows: 34px 42px 1fr;
       gap: 0;
     }
     .tabs {
@@ -63,6 +63,13 @@
       font-weight: 900;
       padding: 0 2px;
     }
+    .tab.island::before {
+      content: "";
+      width: 5px;
+      align-self: stretch;
+      border-radius: 999px;
+      background: #ff9f43;
+    }
     .tab.active { background: #353a49; border-color: #63e8ff; }
     .nav {
       display: grid;
@@ -90,6 +97,18 @@
       white-space: nowrap;
     }
     .side .btn { width: 46px; height: 38px; padding: 0; }
+    .favorites {
+      display: flex;
+      gap: 6px;
+      min-width: 0;
+      overflow: hidden;
+      align-items: center;
+    }
+    .favorite {
+      min-height: 24px;
+      max-width: 132px;
+      padding: 0 10px;
+    }
     .compact-label { display: none; }
     .content {
       min-width: 0;
@@ -139,7 +158,7 @@
     <header class="top">
       <section class="tabs">
         <button class="tab active" data-tab="Google"><span>Google</span><span class="close">x</span></button>
-        <button class="tab" data-tab="YouTube"><span>YouTube</span><span class="close">x</span></button>
+        <button class="tab island" data-tab="YouTube"><span>YouTube</span><span class="close">x</span></button>
         <button class="tab" data-tab="Chrome Web Store"><span>Chrome Web Store</span><span class="close">x</span></button>
         <button class="tab add-tab" style="width:34px">+</button>
       </section>
@@ -157,6 +176,13 @@
           <button class="btn menu-button">Menu</button>
         </div>
       </section>
+      <section class="favorites">
+        <button class="btn favorite" data-title="YouTube">YouTube</button>
+        <button class="btn favorite" data-title="GitHub">GitHub</button>
+        <button class="btn favorite" data-title="Chrome Store">Chrome Store</button>
+        <button class="btn favorite" data-title="Opera Addons">Opera Addons</button>
+        <button class="btn favorite">...</button>
+      </section>
     </header>
     <section class="content">
       <div class="home">
@@ -172,6 +198,7 @@
     <button>New window <span>Ctrl+N</span></button>
     <button>History <span>Ctrl+H</span></button>
     <button>Downloads <span>Ctrl+J</span></button>
+    <button>Bookmarks <span>Ctrl+D</span></button>
     <button>Passwords and autofill</button>
     <button>Extensions</button>
     <button>GX Control / limiters</button>
@@ -203,6 +230,11 @@
     document.querySelectorAll('.tab[data-tab]').forEach(wireTab);
     document.querySelector('.add-tab').addEventListener('click', () => makeTab('Nueva pestana'));
     document.querySelectorAll('.shortcut').forEach((button) => {
+      button.addEventListener('auxclick', (event) => {
+        if (event.button === 1) makeTab(button.dataset.title);
+      });
+    });
+    document.querySelectorAll('.favorite[data-title]').forEach((button) => {
       button.addEventListener('auxclick', (event) => {
         if (event.button === 1) makeTab(button.dataset.title);
       });

@@ -49,6 +49,7 @@ $Output = Join-Path $Bin "GXLightBrowser.exe"
     /reference:System.dll `
     /reference:System.Core.dll `
     /reference:System.Drawing.dll `
+    /reference:System.Security.dll `
     /reference:System.Windows.Forms.dll `
     /reference:$Core `
     /reference:$WinForms `

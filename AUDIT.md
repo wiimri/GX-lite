@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-07
 
-Version actual: 1.0
+Version actual: 1.1
 
 ## Estado Actual
 
@@ -24,6 +24,9 @@ Medicion local despues de iniciar la app:
 - Se agrego monitor visible y GX Control configurable para RAM, hard limit, hot tabs killer, CPU policy y network policy.
 - Se agrego sistema de versionado y pestana de novedades de una sola aparicion por version.
 - Se agrego suspension real de pestanas inactivas mediante descarte del WebView.
+- Se agrego barra de favoritos con import/export HTML compatible con navegadores.
+- Se agrego menu contextual de pestanas con seleccion multiple e islas coloreadas.
+- Se agrego boveda local DPAPI para import/export CSV de passwords.
 - Se mantuvo el build limpio y las pruebas UI automatizadas.
 
 ## Hallazgos Criticos
@@ -103,11 +106,9 @@ Siguiente paso:
 
 Falta para uso diario:
 
-- menu contextual en pestanas
 - reordenar pestanas
 - duplicar pestana
 - restaurar pestana cerrada
-- barra de favoritos
 - historial
 - descargas
 - configuracion

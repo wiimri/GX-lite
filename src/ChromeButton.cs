@@ -23,6 +23,8 @@ namespace GXLightBrowser
         public bool IsSelected { get; set; }
         public Color Accent { get; set; }
         public bool ShowCloseGlyph { get; set; }
+        public bool ShowIslandStripe { get; set; }
+        public Color IslandColor { get; set; }
 
         public bool IsCloseHit(Point point)
         {
@@ -63,8 +65,16 @@ namespace GXLightBrowser
                 pevent.Graphics.DrawPath(border, path);
             }
 
+            if (ShowIslandStripe)
+            {
+                using (SolidBrush islandBrush = new SolidBrush(IslandColor))
+                {
+                    pevent.Graphics.FillRectangle(islandBrush, rect.Left + 5, rect.Top + 5, 5, rect.Height - 10);
+                }
+            }
+
             Rectangle textRect = ShowCloseGlyph
-                ? new Rectangle(rect.Left + 8, rect.Top, rect.Width - 30, rect.Height)
+                ? new Rectangle(rect.Left + (ShowIslandStripe ? 16 : 8), rect.Top, rect.Width - (ShowIslandStripe ? 38 : 30), rect.Height)
                 : rect;
 
             TextFormatFlags flags = (ShowCloseGlyph ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter) |

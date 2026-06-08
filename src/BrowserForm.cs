@@ -5,7 +5,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Net;
+using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -23,6 +26,7 @@ namespace GXLightBrowser
         private readonly ExtensionImporter _extensionImporter = new ExtensionImporter();
         private readonly TabControl _tabs = new TabControl();
         private readonly FlowLayoutPanel _tabStrip = new FlowLayoutPanel();
+        private readonly FlowLayoutPanel _bookmarksBar = new FlowLayoutPanel();
         private readonly TextBox _address = new TextBox();
         private readonly Label _status = new Label();
         private readonly ToolTip _tips = new ToolTip();
@@ -42,6 +46,9 @@ namespace GXLightBrowser
         private readonly Timer _memoryTimer = new Timer();
         private readonly List<HistoryEntry> _history = new List<HistoryEntry>();
         private readonly List<DownloadEntry> _downloads = new List<DownloadEntry>();
+        private readonly List<BookmarkEntry> _bookmarks = new List<BookmarkEntry>();
+        private readonly List<PasswordVaultEntry> _passwordVault = new List<PasswordVaultEntry>();
+        private readonly Dictionary<int, Color> _islandColors = new Dictionary<int, Color>();
         private readonly GxControlSettings _gxControl = new GxControlSettings();
         private AppSettings _appSettings = new AppSettings();
 
@@ -82,7 +89,7 @@ namespace GXLightBrowser
             root.RowCount = 3;
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 62));
             root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 94));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
             Controls.Add(root);
@@ -105,9 +112,10 @@ namespace GXLightBrowser
             top.Dock = DockStyle.Fill;
             top.BackColor = Theme.Topbar;
             top.Padding = new Padding(8, 6, 10, 7);
-            top.RowCount = 2;
+            top.RowCount = 3;
             top.ColumnCount = 1;
             top.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
             top.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             root.Controls.Add(top, 1, 0);
 
@@ -171,6 +179,13 @@ namespace GXLightBrowser
             ConfigureButton(_memoryLimitButton, "Limit 768", 88, "Limitador de memoria");
             ConfigureButton(_menuButton, "Menu", 72, "Menu principal");
             actions.Controls.AddRange(new Control[] { _menuButton, _memoryLimitButton, _memoryLabel });
+
+            _bookmarksBar.Dock = DockStyle.Fill;
+            _bookmarksBar.WrapContents = false;
+            _bookmarksBar.AutoScroll = false;
+            _bookmarksBar.BackColor = Theme.Topbar;
+            _bookmarksBar.Padding = new Padding(0, 2, 0, 0);
+            top.Controls.Add(_bookmarksBar, 0, 2);
 
             _tabs.Dock = DockStyle.Fill;
             _tabs.Appearance = TabAppearance.FlatButtons;
@@ -283,10 +298,17 @@ namespace GXLightBrowser
                     NavigateInternal("history");
                 }
 
+                if (e.Control && e.KeyCode == Keys.D)
+                {
+                    e.SuppressKeyPress = true;
+                    AddCurrentBookmark();
+                }
+
                 if (e.Alt && e.KeyCode == Keys.T)
                 {
                     e.SuppressKeyPress = true;
                     _activeIslandId = _nextIslandId++;
+                    _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
                     await CreateTabAsync(HomeUrl);
                 }
 
@@ -350,6 +372,9 @@ namespace GXLightBrowser
         {
             AppPaths.Ensure();
             _appSettings = AppSettings.Load();
+            LoadBookmarks();
+            LoadPasswordVault();
+            RebuildBookmarksBar();
             EnsureDefaultFilters();
             _adBlocker.Load(AppPaths.Filters);
 
@@ -388,6 +413,10 @@ namespace GXLightBrowser
             page.Controls.Add(web);
             BrowserTab tab = new BrowserTab(page, web);
             tab.IslandId = _activeIslandId;
+            if (tab.IslandId > 0 && !_islandColors.ContainsKey(tab.IslandId))
+            {
+                _islandColors[tab.IslandId] = ColorFromText(url);
+            }
             page.Tag = tab;
 
             _tabs.TabPages.Add(page);
@@ -708,6 +737,7 @@ namespace GXLightBrowser
             menu.Items.Add("New tab in tab island                       Alt+T", null, async delegate
             {
                 _activeIslandId = _nextIslandId++;
+                _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
                 await CreateTabAsync(HomeUrl);
             });
             menu.Items.Add("New window                                  Ctrl+N", null, delegate { StartNewWindow(); });
@@ -715,9 +745,20 @@ namespace GXLightBrowser
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("History                                     Ctrl+H", null, delegate { NavigateInternal("history"); });
             menu.Items.Add("Downloads                                   Ctrl+J", null, delegate { NavigateInternal("downloads"); });
-            menu.Items.Add("Bookmarks", null, delegate { NavigateInternal("bookmarks"); });
+            ToolStripMenuItem bookmarks = new ToolStripMenuItem("Bookmarks");
+            bookmarks.DropDownItems.Add("Add current page                            Ctrl+D", null, delegate { AddCurrentBookmark(); });
+            bookmarks.DropDownItems.Add("Manage bookmarks", null, delegate { NavigateInternal("bookmarks"); });
+            bookmarks.DropDownItems.Add(new ToolStripSeparator());
+            bookmarks.DropDownItems.Add("Import bookmarks HTML...", null, delegate { ImportBookmarks(); });
+            bookmarks.DropDownItems.Add("Export bookmarks HTML...", null, delegate { ExportBookmarks(); });
+            menu.Items.Add(bookmarks);
             menu.Items.Add("Extensions", null, async delegate { await NavigateExtensionsPageAsync(); });
-            menu.Items.Add("Passwords and autofill", null, delegate { NavigateInternal("passwords"); });
+            ToolStripMenuItem passwords = new ToolStripMenuItem("Passwords and autofill");
+            passwords.DropDownItems.Add("Password settings", null, delegate { NavigateInternal("passwords"); });
+            passwords.DropDownItems.Add("Import passwords CSV...", null, delegate { ImportPasswords(); });
+            passwords.DropDownItems.Add("Export passwords CSV...", null, delegate { ExportPasswords(); });
+            passwords.DropDownItems.Add("Export CSV template...", null, delegate { ExportPasswordTemplate(); });
+            menu.Items.Add(passwords);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Suspend inactive tabs now", null, delegate { SuspendIdleTabsNow(); });
             menu.Items.Add("GX Control / limiters", null, delegate { ShowGxControl(); });
@@ -861,6 +902,429 @@ namespace GXLightBrowser
             _tips.SetToolTip(button, tooltip);
         }
 
+        private void LoadBookmarks()
+        {
+            _bookmarks.Clear();
+            if (!File.Exists(AppPaths.Bookmarks))
+            {
+                return;
+            }
+
+            string[] lines = File.ReadAllLines(AppPaths.Bookmarks, Encoding.UTF8);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string[] parts = lines[i].Split('\t');
+                if (parts.Length < 3)
+                {
+                    continue;
+                }
+
+                BookmarkEntry entry = new BookmarkEntry();
+                entry.Title = DecodeField(parts[0]);
+                entry.Url = DecodeField(parts[1]);
+                entry.Folder = DecodeField(parts[2]);
+                entry.CreatedUtc = parts.Length > 3 ? new DateTime(ParseLong(parts[3], DateTime.UtcNow.Ticks), DateTimeKind.Utc) : DateTime.UtcNow;
+                if (!string.IsNullOrWhiteSpace(entry.Url))
+                {
+                    _bookmarks.Add(entry);
+                }
+            }
+        }
+
+        private void SaveBookmarks()
+        {
+            AppPaths.Ensure();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                builder.Append(EncodeField(entry.Title)).Append('\t')
+                    .Append(EncodeField(entry.Url)).Append('\t')
+                    .Append(EncodeField(entry.Folder)).Append('\t')
+                    .Append(entry.CreatedUtc.Ticks).AppendLine();
+            }
+            File.WriteAllText(AppPaths.Bookmarks, builder.ToString(), Encoding.UTF8);
+        }
+
+        private void RebuildBookmarksBar()
+        {
+            _bookmarksBar.SuspendLayout();
+            _bookmarksBar.Controls.Clear();
+
+            if (_bookmarks.Count == 0)
+            {
+                ChromeButton add = new ChromeButton();
+                ConfigureButton(add, "+ Bookmark", 100, "Guardar pagina actual en favoritos");
+                add.Height = 24;
+                add.Margin = new Padding(0, 1, 6, 1);
+                add.Click += delegate { AddCurrentBookmark(); };
+                _bookmarksBar.Controls.Add(add);
+                _bookmarksBar.ResumeLayout();
+                return;
+            }
+
+            int limit = Math.Min(_bookmarks.Count, Width < 900 ? 5 : 10);
+            for (int i = 0; i < limit; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                ChromeButton button = new ChromeButton();
+                ConfigureButton(button, Trim(string.IsNullOrWhiteSpace(entry.Title) ? entry.Url : entry.Title, 18), Width < 900 ? 92 : 132, entry.Url);
+                button.Height = 24;
+                button.Margin = new Padding(0, 1, 6, 1);
+                button.Click += delegate { NavigateActive(entry.Url); };
+                button.MouseUp += async delegate(object sender, MouseEventArgs e)
+                {
+                    if (e.Button == MouseButtons.Middle)
+                    {
+                        await CreateTabAsync(entry.Url);
+                    }
+                    else if (e.Button == MouseButtons.Right)
+                    {
+                        ShowBookmarkContextMenu(entry, button);
+                    }
+                };
+                _bookmarksBar.Controls.Add(button);
+            }
+
+            ChromeButton manage = new ChromeButton();
+            ConfigureButton(manage, "...", 34, "Administrar favoritos");
+            manage.Height = 24;
+            manage.Margin = new Padding(0, 1, 6, 1);
+            manage.Click += delegate { NavigateInternal("bookmarks"); };
+            _bookmarksBar.Controls.Add(manage);
+
+            _bookmarksBar.ResumeLayout();
+        }
+
+        private void ShowBookmarkContextMenu(BookmarkEntry entry, Control owner)
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+            menu.Items.Add("Open", null, delegate { NavigateActive(entry.Url); });
+            menu.Items.Add("Open in new tab", null, async delegate { await CreateTabAsync(entry.Url); });
+            menu.Items.Add("Copy address", null, delegate { Clipboard.SetText(entry.Url); });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Remove bookmark", null, delegate
+            {
+                _bookmarks.Remove(entry);
+                SaveBookmarks();
+                RebuildBookmarksBar();
+            });
+            menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
+        private void AddCurrentBookmark()
+        {
+            BrowserTab tab = ActiveTab();
+            string url = GetTabUrl(tab);
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return;
+            }
+
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                if (string.Equals(_bookmarks[i].Url, url, StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(this, "Ese favorito ya existe.", "Bookmarks");
+                    return;
+                }
+            }
+
+            BookmarkEntry entry = new BookmarkEntry();
+            entry.Title = GetTabTitle(tab);
+            entry.Url = url;
+            entry.Folder = "Favorites bar";
+            entry.CreatedUtc = DateTime.UtcNow;
+            _bookmarks.Insert(0, entry);
+            SaveBookmarks();
+            RebuildBookmarksBar();
+            MessageBox.Show(this, "Favorito guardado en la barra.", "Bookmarks");
+        }
+
+        private void ImportBookmarks()
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Importar bookmarks";
+                dialog.Filter = "Bookmarks HTML (*.html;*.htm)|*.html;*.htm|All files (*.*)|*.*";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    int added = ImportBookmarksFromHtml(File.ReadAllText(dialog.FileName, Encoding.UTF8));
+                    SaveBookmarks();
+                    RebuildBookmarksBar();
+                    MessageBox.Show(this, "Bookmarks importados: " + added, "Bookmarks");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "No se pudieron importar bookmarks");
+                }
+            }
+        }
+
+        private void ExportBookmarks()
+        {
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Exportar bookmarks";
+                dialog.Filter = "Bookmarks HTML (*.html)|*.html";
+                dialog.FileName = "gx-light-bookmarks.html";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    File.WriteAllText(dialog.FileName, BuildBookmarksHtml(), Encoding.UTF8);
+                    MessageBox.Show(this, "Bookmarks exportados.", "Bookmarks");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "No se pudieron exportar bookmarks");
+                }
+            }
+        }
+
+        private int ImportBookmarksFromHtml(string html)
+        {
+            int added = 0;
+            string folder = "Imported";
+            Regex folderRegex = new Regex("<H3[^>]*>(?<title>.*?)</H3>", RegexOptions.IgnoreCase);
+            Regex linkRegex = new Regex("<A\\s+[^>]*HREF\\s*=\\s*(\"|')(?<url>.*?)\\1[^>]*>(?<title>.*?)</A>", RegexOptions.IgnoreCase);
+            string[] lines = html.Replace("\r", string.Empty).Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                Match folderMatch = folderRegex.Match(lines[i]);
+                if (folderMatch.Success)
+                {
+                    folder = CleanImportedText(folderMatch.Groups["title"].Value);
+                    continue;
+                }
+
+                Match linkMatch = linkRegex.Match(lines[i]);
+                if (!linkMatch.Success)
+                {
+                    continue;
+                }
+
+                string url = WebUtility.HtmlDecode(linkMatch.Groups["url"].Value);
+                if (string.IsNullOrWhiteSpace(url) || BookmarkExists(url))
+                {
+                    continue;
+                }
+
+                BookmarkEntry entry = new BookmarkEntry();
+                entry.Url = url;
+                entry.Title = CleanImportedText(linkMatch.Groups["title"].Value);
+                entry.Folder = string.IsNullOrWhiteSpace(folder) ? "Imported" : folder;
+                entry.CreatedUtc = DateTime.UtcNow;
+                _bookmarks.Add(entry);
+                added++;
+            }
+
+            return added;
+        }
+
+        private string BuildBookmarksHtml()
+        {
+            StringBuilder html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
+            html.AppendLine("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">");
+            html.AppendLine("<TITLE>GX Light Bookmarks</TITLE>");
+            html.AppendLine("<H1>GX Light Bookmarks</H1>");
+            html.AppendLine("<DL><p>");
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                long unix = (long)(entry.CreatedUtc - new DateTime(1970, 1, 1)).TotalSeconds;
+                html.Append("    <DT><A HREF=\"").Append(EscapeHtml(entry.Url)).Append("\" ADD_DATE=\"")
+                    .Append(unix).Append("\">").Append(EscapeHtml(entry.Title)).AppendLine("</A>");
+            }
+            html.AppendLine("</DL><p>");
+            return html.ToString();
+        }
+
+        private bool BookmarkExists(string url)
+        {
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                if (string.Equals(_bookmarks[i].Url, url, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void LoadPasswordVault()
+        {
+            _passwordVault.Clear();
+            if (!File.Exists(AppPaths.PasswordVault))
+            {
+                return;
+            }
+
+            string[] lines = File.ReadAllLines(AppPaths.PasswordVault, Encoding.UTF8);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                try
+                {
+                    byte[] protectedBytes = Convert.FromBase64String(lines[i]);
+                    byte[] clearBytes = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
+                    string csv = Encoding.UTF8.GetString(clearBytes);
+                    string[] parts = SplitCsvLine(csv);
+                    if (parts.Length >= 4)
+                    {
+                        PasswordVaultEntry entry = new PasswordVaultEntry();
+                        entry.Name = parts[0];
+                        entry.Url = parts[1];
+                        entry.Username = parts[2];
+                        entry.Password = parts[3];
+                        entry.Note = parts.Length > 4 ? parts[4] : string.Empty;
+                        entry.ImportedUtc = parts.Length > 5 ? new DateTime(ParseLong(parts[5], DateTime.UtcNow.Ticks), DateTimeKind.Utc) : DateTime.UtcNow;
+                        _passwordVault.Add(entry);
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private void SavePasswordVault()
+        {
+            AppPaths.Ensure();
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < _passwordVault.Count; i++)
+            {
+                PasswordVaultEntry entry = _passwordVault[i];
+                string csv = CsvEscape(entry.Name) + "," + CsvEscape(entry.Url) + "," + CsvEscape(entry.Username) + "," +
+                    CsvEscape(entry.Password) + "," + CsvEscape(entry.Note) + "," + entry.ImportedUtc.Ticks.ToString();
+                byte[] clearBytes = Encoding.UTF8.GetBytes(csv);
+                byte[] protectedBytes = ProtectedData.Protect(clearBytes, null, DataProtectionScope.CurrentUser);
+                builder.AppendLine(Convert.ToBase64String(protectedBytes));
+            }
+            File.WriteAllText(AppPaths.PasswordVault, builder.ToString(), Encoding.UTF8);
+        }
+
+        private void ImportPasswords()
+        {
+            using (OpenFileDialog dialog = new OpenFileDialog())
+            {
+                dialog.Title = "Importar passwords CSV";
+                dialog.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    string[] lines = File.ReadAllLines(dialog.FileName, Encoding.UTF8);
+                    int added = 0;
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        if (string.IsNullOrWhiteSpace(lines[i]))
+                        {
+                            continue;
+                        }
+
+                        string[] parts = SplitCsvLine(lines[i]);
+                        if (parts.Length < 4 || IsPasswordHeader(parts))
+                        {
+                            continue;
+                        }
+
+                        PasswordVaultEntry entry = new PasswordVaultEntry();
+                        entry.Name = parts[0];
+                        entry.Url = parts[1];
+                        entry.Username = parts[2];
+                        entry.Password = parts[3];
+                        entry.Note = parts.Length > 4 ? parts[4] : string.Empty;
+                        entry.ImportedUtc = DateTime.UtcNow;
+                        _passwordVault.Add(entry);
+                        added++;
+                    }
+
+                    SavePasswordVault();
+                    MessageBox.Show(this, "Passwords importadas a la boveda local: " + added + Environment.NewLine +
+                        "Nota: WebView2 no permite inyectarlas directo al gestor nativo/autofill.", "Passwords");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "No se pudieron importar passwords");
+                }
+            }
+        }
+
+        private void ExportPasswords()
+        {
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Exportar passwords CSV";
+                dialog.Filter = "CSV files (*.csv)|*.csv";
+                dialog.FileName = "gx-light-passwords.csv";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                try
+                {
+                    StringBuilder csv = new StringBuilder();
+                    csv.AppendLine("name,url,username,password,note");
+                    for (int i = 0; i < _passwordVault.Count; i++)
+                    {
+                        PasswordVaultEntry entry = _passwordVault[i];
+                        csv.Append(CsvEscape(entry.Name)).Append(',')
+                            .Append(CsvEscape(entry.Url)).Append(',')
+                            .Append(CsvEscape(entry.Username)).Append(',')
+                            .Append(CsvEscape(entry.Password)).Append(',')
+                            .Append(CsvEscape(entry.Note)).AppendLine();
+                    }
+                    File.WriteAllText(dialog.FileName, csv.ToString(), Encoding.UTF8);
+                    MessageBox.Show(this, "Passwords exportadas. Este CSV contiene secretos en texto visible.", "Passwords");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "No se pudieron exportar passwords");
+                }
+            }
+        }
+
+        private void ExportPasswordTemplate()
+        {
+            using (SaveFileDialog dialog = new SaveFileDialog())
+            {
+                dialog.Title = "Exportar plantilla CSV";
+                dialog.Filter = "CSV files (*.csv)|*.csv";
+                dialog.FileName = "gx-light-password-template.csv";
+                if (dialog.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                File.WriteAllText(dialog.FileName, "name,url,username,password,note" + Environment.NewLine, Encoding.UTF8);
+                MessageBox.Show(this, "Plantilla CSV exportada.", "Passwords");
+            }
+        }
+
+        private static bool IsPasswordHeader(string[] parts)
+        {
+            return parts.Length >= 4 &&
+                string.Equals(parts[0], "name", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(parts[1], "url", StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(parts[2], "username", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void RebuildTabStrip()
         {
             _tabStrip.SuspendLayout();
@@ -870,6 +1334,7 @@ namespace GXLightBrowser
             for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
                 TabPage page = _tabs.TabPages[i];
+                BrowserTab browserTab = page.Tag as BrowserTab;
                 ChromeButton tab = new ChromeButton();
                 tab.Text = Trim(page.Text, Width < 900 ? 16 : 24);
                 tab.Width = width;
@@ -877,6 +1342,16 @@ namespace GXLightBrowser
                 tab.Margin = new Padding(0, 1, 6, 3);
                 tab.IsSelected = page == _tabs.SelectedTab;
                 tab.ShowCloseGlyph = true;
+                if (browserTab != null && browserTab.IsSelectedForIsland)
+                {
+                    tab.Accent = Theme.Warning;
+                }
+                if (browserTab != null && browserTab.IslandId > 0)
+                {
+                    tab.ShowIslandStripe = true;
+                    tab.IslandColor = GetIslandColor(browserTab);
+                    tab.Accent = tab.IslandColor;
+                }
                 int index = i;
                 tab.MouseUp += delegate(object sender, MouseEventArgs e)
                 {
@@ -888,7 +1363,20 @@ namespace GXLightBrowser
 
                     if (e.Button == MouseButtons.Left && index < _tabs.TabPages.Count)
                     {
+                        if ((ModifierKeys & Keys.Control) == Keys.Control && browserTab != null)
+                        {
+                            browserTab.IsSelectedForIsland = !browserTab.IsSelectedForIsland;
+                            RebuildTabStrip();
+                            return;
+                        }
+
                         _tabs.SelectedIndex = index;
+                        return;
+                    }
+
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        ShowTabContextMenu(page, tab);
                     }
                 };
                 _tips.SetToolTip(tab, page.Text);
@@ -901,6 +1389,168 @@ namespace GXLightBrowser
             _tabStrip.Controls.Add(_tabStripNewTab);
 
             _tabStrip.ResumeLayout();
+        }
+
+        private void ShowTabContextMenu(TabPage page, Control owner)
+        {
+            BrowserTab tab = page.Tag as BrowserTab;
+            if (tab == null)
+            {
+                return;
+            }
+
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+            menu.Items.Add("New tab                                      Ctrl+T", null, async delegate { await CreateTabAsync(HomeUrl); });
+            menu.Items.Add("Create tab island from selected             Alt+T", null, delegate { CreateIslandFromSelection(tab); });
+            menu.Items.Add(tab.IsSelectedForIsland ? "Deselect tab" : "Select tab", null, delegate
+            {
+                tab.IsSelectedForIsland = !tab.IsSelectedForIsland;
+                RebuildTabStrip();
+            });
+            menu.Items.Add("Clear tab selection", null, delegate { ClearTabSelection(); });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Reload selected tabs", null, async delegate { await ReloadSelectedTabsAsync(tab); });
+            menu.Items.Add("Copy page addresses", null, delegate { CopySelectedTabAddresses(tab); });
+            menu.Items.Add("Duplicate selected tabs", null, async delegate { await DuplicateSelectedTabsAsync(tab); });
+            menu.Items.Add(tab.IsPinned ? "Unpin tab" : "Pin tab", null, delegate
+            {
+                tab.IsPinned = !tab.IsPinned;
+                page.Text = tab.IsPinned ? "[Pinned] " + Trim(GetTabTitle(tab), 18) : GetTabTitle(tab);
+                RebuildTabStrip();
+            });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("Close selected tabs                          Ctrl+W", null, delegate { CloseSelectedTabs(tab); });
+            menu.Items.Add("Close tabs to the right", null, delegate { CloseTabsToRight(page); });
+            menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
+        private List<BrowserTab> SelectedTabsOr(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = new List<BrowserTab>();
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.IsSelectedForIsland)
+                {
+                    selected.Add(tab);
+                }
+            }
+
+            if (selected.Count == 0 && fallback != null)
+            {
+                selected.Add(fallback);
+            }
+
+            return selected;
+        }
+
+        private void CreateIslandFromSelection(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            if (selected.Count == 0)
+            {
+                return;
+            }
+
+            int islandId = _nextIslandId++;
+            Color color = ColorFromText(GetTabUrl(selected[0]));
+            _islandColors[islandId] = color;
+            for (int i = 0; i < selected.Count; i++)
+            {
+                selected[i].IslandId = islandId;
+                selected[i].IsSelectedForIsland = false;
+            }
+            _activeIslandId = islandId;
+            RebuildTabStrip();
+        }
+
+        private async Task ReloadSelectedTabsAsync(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                BrowserTab tab = selected[i];
+                if (tab.IsSuspended)
+                {
+                    await RestoreSuspendedTabAsync(tab);
+                }
+                else if (tab.WebView != null)
+                {
+                    tab.WebView.Reload();
+                }
+            }
+        }
+
+        private async Task DuplicateSelectedTabsAsync(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                await CreateTabAsync(GetTabUrl(selected[i]));
+            }
+        }
+
+        private void CopySelectedTabAddresses(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < selected.Count; i++)
+            {
+                builder.AppendLine(GetTabUrl(selected[i]));
+            }
+
+            if (builder.Length > 0)
+            {
+                Clipboard.SetText(builder.ToString());
+            }
+        }
+
+        private void CloseSelectedTabs(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                if (selected[i].Page != null && _tabs.TabPages.Contains(selected[i].Page))
+                {
+                    CloseTab(selected[i].Page);
+                }
+            }
+        }
+
+        private void CloseTabsToRight(TabPage page)
+        {
+            int index = _tabs.TabPages.IndexOf(page);
+            if (index < 0)
+            {
+                return;
+            }
+
+            List<TabPage> toClose = new List<TabPage>();
+            for (int i = index + 1; i < _tabs.TabPages.Count; i++)
+            {
+                toClose.Add(_tabs.TabPages[i]);
+            }
+
+            for (int i = 0; i < toClose.Count; i++)
+            {
+                CloseTab(toClose[i]);
+            }
+        }
+
+        private void ClearTabSelection()
+        {
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null)
+                {
+                    tab.IsSelectedForIsland = false;
+                }
+            }
+            RebuildTabStrip();
         }
 
         private void CloseTab(TabPage page)
@@ -1231,6 +1881,174 @@ namespace GXLightBrowser
             _chromeStore.Visible = !veryCompact;
             _operaAddons.Visible = !veryCompact;
             RebuildTabStrip();
+            RebuildBookmarksBar();
+        }
+
+        private string GetTabUrl(BrowserTab tab)
+        {
+            if (tab == null)
+            {
+                return HomeUrl;
+            }
+
+            if (tab.IsSuspended)
+            {
+                return string.IsNullOrWhiteSpace(tab.SuspendedUrl) ? HomeUrl : tab.SuspendedUrl;
+            }
+
+            if (tab.WebView != null && tab.WebView.Source != null && tab.WebView.Source.ToString() != "about:blank")
+            {
+                return tab.WebView.Source.ToString();
+            }
+
+            if (!string.IsNullOrWhiteSpace(tab.SuspendedUrl))
+            {
+                return tab.SuspendedUrl;
+            }
+
+            return HomeUrl;
+        }
+
+        private string GetTabTitle(BrowserTab tab)
+        {
+            if (tab == null || tab.Page == null || string.IsNullOrWhiteSpace(tab.Page.Text))
+            {
+                return "GX Light";
+            }
+
+            string title = tab.Page.Text;
+            if (title.StartsWith("[Suspended] ", StringComparison.Ordinal))
+            {
+                title = title.Substring("[Suspended] ".Length);
+            }
+            if (title.StartsWith("[Pinned] ", StringComparison.Ordinal))
+            {
+                title = title.Substring("[Pinned] ".Length);
+            }
+
+            return title;
+        }
+
+        private Color GetIslandColor(BrowserTab tab)
+        {
+            if (tab == null || tab.IslandId <= 0)
+            {
+                return Theme.Accent;
+            }
+
+            Color color;
+            if (_islandColors.TryGetValue(tab.IslandId, out color))
+            {
+                return color;
+            }
+
+            color = ColorFromText(GetTabUrl(tab));
+            _islandColors[tab.IslandId] = color;
+            return color;
+        }
+
+        private static Color ColorFromText(string value)
+        {
+            string text = string.IsNullOrWhiteSpace(value) ? "gx-light" : value.ToLowerInvariant();
+            int hash = 17;
+            for (int i = 0; i < text.Length; i++)
+            {
+                hash = unchecked(hash * 31 + text[i]);
+            }
+
+            int palette = (hash & 0x7fffffff) % 8;
+            Color[] colors = new Color[]
+            {
+                Color.FromArgb(255, 98, 132),
+                Color.FromArgb(255, 159, 67),
+                Color.FromArgb(72, 219, 251),
+                Color.FromArgb(29, 209, 161),
+                Color.FromArgb(254, 202, 87),
+                Color.FromArgb(95, 39, 205),
+                Color.FromArgb(238, 82, 83),
+                Color.FromArgb(16, 172, 132)
+            };
+            return colors[palette];
+        }
+
+        private static string EncodeField(string value)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value ?? string.Empty));
+        }
+
+        private static string DecodeField(string value)
+        {
+            try
+            {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(value));
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static long ParseLong(string value, long fallback)
+        {
+            long parsed;
+            return long.TryParse(value, out parsed) ? parsed : fallback;
+        }
+
+        private static string CleanImportedText(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "Imported";
+            }
+
+            string noTags = Regex.Replace(value, "<.*?>", string.Empty);
+            return WebUtility.HtmlDecode(noTags).Trim();
+        }
+
+        private static string CsvEscape(string value)
+        {
+            string text = value ?? string.Empty;
+            if (text.IndexOf('"') >= 0 || text.IndexOf(',') >= 0 || text.IndexOf('\n') >= 0 || text.IndexOf('\r') >= 0)
+            {
+                return "\"" + text.Replace("\"", "\"\"") + "\"";
+            }
+            return text;
+        }
+
+        private static string[] SplitCsvLine(string line)
+        {
+            List<string> values = new List<string>();
+            StringBuilder current = new StringBuilder();
+            bool inQuotes = false;
+            for (int i = 0; i < line.Length; i++)
+            {
+                char ch = line[i];
+                if (ch == '"')
+                {
+                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                    continue;
+                }
+
+                if (ch == ',' && !inQuotes)
+                {
+                    values.Add(current.ToString());
+                    current.Length = 0;
+                    continue;
+                }
+
+                current.Append(ch);
+            }
+
+            values.Add(current.ToString());
+            return values.ToArray();
         }
 
         private static string NormalizeInput(string input)
@@ -1363,11 +2181,9 @@ namespace GXLightBrowser
                 case "downloads":
                     return HtmlShell("Downloads", DownloadsHtml());
                 case "passwords":
-                    return HtmlShell("Passwords and autofill",
-                        "<p>Password autosave and general autofill are <b>" + (_passwordSavingEnabled ? "enabled" : "disabled") + "</b> in WebView2 settings.</p>" +
-                        "<p>Saved passwords are managed by the WebView2/Edge profile storage for this app profile.</p>");
+                    return HtmlShell("Passwords and autofill", PasswordsHtml());
                 case "bookmarks":
-                    return HtmlShell("Bookmarks", "<p>Bookmarks UI is planned. For now, use sidebar shortcuts.</p>");
+                    return HtmlShell("Bookmarks", BookmarksHtml());
                 case "memory":
                     return HtmlShell("Memory monitor",
                         "<p>Estimated browser memory: <b>" + EstimateBrowserMemoryMb() + " MB</b></p>" +
@@ -1457,6 +2273,56 @@ namespace GXLightBrowser
                 body.Append("<tr><td>" + entry.StartedUtc.ToLocalTime().ToString("HH:mm") + "</td><td>" +
                     EscapeHtml(entry.FileName) + "</td><td>" + EscapeHtml(entry.State) + "</td><td>" +
                     EscapeHtml(entry.Path) + "</td></tr>");
+            }
+            body.Append("</table>");
+            return body.ToString();
+        }
+
+        private string BookmarksHtml()
+        {
+            StringBuilder body = new StringBuilder();
+            body.Append("<p><b>").Append(_bookmarks.Count).Append("</b> bookmarks guardados. Usa Menu > Bookmarks para importar, exportar o guardar la pagina actual.</p>");
+            if (_bookmarks.Count == 0)
+            {
+                body.Append("<p>No hay bookmarks todavia.</p>");
+                return body.ToString();
+            }
+
+            body.Append("<table><tr><th>Title</th><th>Folder</th><th>URL</th><th>Added</th></tr>");
+            for (int i = 0; i < _bookmarks.Count; i++)
+            {
+                BookmarkEntry entry = _bookmarks[i];
+                body.Append("<tr><td>").Append(EscapeHtml(entry.Title)).Append("</td><td>")
+                    .Append(EscapeHtml(entry.Folder)).Append("</td><td><a href='")
+                    .Append(EscapeHtml(entry.Url)).Append("'>").Append(EscapeHtml(entry.Url)).Append("</a></td><td>")
+                    .Append(entry.CreatedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td></tr>");
+            }
+            body.Append("</table>");
+            return body.ToString();
+        }
+
+        private string PasswordsHtml()
+        {
+            StringBuilder body = new StringBuilder();
+            body.Append("<p>Password autosave and general autofill are <b>")
+                .Append(_passwordSavingEnabled ? "enabled" : "disabled")
+                .Append("</b> in WebView2 settings.</p>");
+            body.Append("<p>WebView2 manages its native saved passwords inside the Edge profile. GX Light also has a local DPAPI-protected CSV vault for import/export.</p>");
+            body.Append("<p>Vault entries imported: <b>").Append(_passwordVault.Count).Append("</b>. Use Menu > Passwords and autofill to import/export CSV.</p>");
+
+            if (_passwordVault.Count == 0)
+            {
+                return body.ToString();
+            }
+
+            body.Append("<table><tr><th>Name</th><th>URL</th><th>Username</th><th>Imported</th></tr>");
+            for (int i = 0; i < _passwordVault.Count; i++)
+            {
+                PasswordVaultEntry entry = _passwordVault[i];
+                body.Append("<tr><td>").Append(EscapeHtml(entry.Name)).Append("</td><td>")
+                    .Append(EscapeHtml(entry.Url)).Append("</td><td>")
+                    .Append(EscapeHtml(entry.Username)).Append("</td><td>")
+                    .Append(entry.ImportedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td></tr>");
             }
             body.Append("</table>");
             return body.ToString();
@@ -1563,6 +2429,24 @@ namespace GXLightBrowser
             public string Uri { get; set; }
             public string State { get; set; }
             public DateTime StartedUtc { get; set; }
+        }
+
+        private sealed class BookmarkEntry
+        {
+            public string Title { get; set; }
+            public string Url { get; set; }
+            public string Folder { get; set; }
+            public DateTime CreatedUtc { get; set; }
+        }
+
+        private sealed class PasswordVaultEntry
+        {
+            public string Name { get; set; }
+            public string Url { get; set; }
+            public string Username { get; set; }
+            public string Password { get; set; }
+            public string Note { get; set; }
+            public DateTime ImportedUtc { get; set; }
         }
     }
 }

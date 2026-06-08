@@ -91,10 +91,16 @@ async function main() {
         report.failures.push(`middle-click tab close removed wrong count: ${youtubeCount}`);
       }
 
+      await page.locator('.favorite[data-title="GitHub"]').click({ button: "middle" });
+      const githubCount = await page.locator('.tab[data-tab="GitHub"]').count();
+      if (githubCount !== 1) {
+        report.failures.push(`middle-click favorite did not create a tab: ${githubCount}`);
+      }
+
       await page.locator(".menu-button").click();
       const menuVisible = await page.locator(".menu-preview").isVisible();
       const menuText = await page.locator(".menu-preview").innerText();
-      if (!menuVisible || menuText.indexOf("History") < 0 || menuText.indexOf("Downloads") < 0 || menuText.indexOf("Extensions") < 0) {
+      if (!menuVisible || menuText.indexOf("History") < 0 || menuText.indexOf("Downloads") < 0 || menuText.indexOf("Bookmarks") < 0 || menuText.indexOf("Extensions") < 0) {
         report.failures.push("main menu did not expose required sections");
       }
     }

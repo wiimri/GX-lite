@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Current version: `1.0`
+Current version: `1.1`
 
 GX Light Browser is a lightweight Windows browser prototype inspired by the workflow of Opera GX and Brave, without copying either product's branding or protected UI.
 
@@ -28,16 +28,21 @@ It uses Microsoft Edge WebView2 instead of Electron, so the app is small and rel
 - Session downloads page.
 - WebView2 password autosave and autofill enabled.
 - Tab islands for grouped new tabs.
+- Tab island context menu: select multiple tabs, create a colored island, duplicate/reload/copy/close selected tabs.
 - Real tab suspension/discarding for inactive tabs.
 - Visible memory monitor and configurable GX Control limiters.
 - One-time update notes tab per installed version.
+- Favorites bar with middle-click open-in-new-tab support.
+- Bookmark import/export using browser-compatible HTML.
+- Password CSV import/export through a local Windows DPAPI-protected GX Light vault.
 
 ## Versioning
 
 GX Light Browser uses simple user-facing versions:
 
 - current baseline: `1.0`
-- each improvement or fix increments the minor version: `1.1`, `1.2`, ... `1.19`
+- current improvement line: `1.1`
+- each improvement or fix increments the minor version: `1.2`, `1.3`, ... `1.19`
 - after `1.19`, the next line becomes `2.0`
 
 When a new version runs for the first time, the browser opens `gxlight://updated` with a short summary. The app stores the last seen version in `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, so the update tab only appears once per version.
@@ -73,6 +78,28 @@ The importer copies the extension into the GX Light profile and removes `_metada
 Important: WebView2 supports browser extensions from local folders, but it is not the Chrome Web Store UI. Some extensions that depend on browser chrome UI, store-specific installation behavior, or unsupported APIs may need adaptation.
 
 The store buttons are navigation shortcuts. Direct one-click installation from Chrome Web Store is controlled by the store/browser integration and may not work inside WebView2, so the reliable path for now is downloading or locating the extension folder and importing it.
+
+## Bookmarks
+
+The favorites bar is always visible under the navigation row.
+
+- `Ctrl+D` saves the current page to the favorites bar.
+- Left-click opens a bookmark in the current tab.
+- Middle-click opens a bookmark in a new internal tab.
+- Right-click a bookmark to open, copy its address, or remove it.
+- `Menu > Bookmarks` can import/export browser-compatible bookmarks HTML.
+
+## Passwords
+
+WebView2 native password autosave/autofill is enabled for the app profile under `%LOCALAPPDATA%\GXLightBrowser\Profile`.
+
+GX Light also includes a local password import/export vault:
+
+- CSV format: `name,url,username,password,note`
+- imported entries are stored encrypted for the current Windows user with DPAPI
+- exporting writes a normal plaintext CSV, so it should be handled carefully
+
+Important: WebView2 does not expose a public API to inject imported passwords directly into its native saved-password manager. The GX Light vault is an import/export companion, while WebView2 handles normal save/autofill during browsing.
 
 ## Ad blocking
 
