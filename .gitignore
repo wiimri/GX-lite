@@ -1,0 +1,5 @@
+bin/
+packages/
+node_modules/
+.npm-cache/
+screenshots/desktop-after-polish.png

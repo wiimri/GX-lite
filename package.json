@@ -1,0 +1,20 @@
+{
+  "name": "gxlightbrowser",
+  "version": "1.0.0",
+  "description": "GX Light Browser is a lightweight Windows browser prototype inspired by the workflow of Opera GX and Brave, without copying either product's branding or protected UI.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test:ui": "node scripts/verify-ui-preview.js",
+    "test:firewall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Verify-PrivacyFirewall.ps1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "playwright": "^1.60.0"
+  }
+}

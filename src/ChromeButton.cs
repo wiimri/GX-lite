@@ -1,0 +1,104 @@
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+
+namespace GXLightBrowser
+{
+    internal sealed class ChromeButton : Button
+    {
+        private bool _hover;
+
+        public ChromeButton()
+        {
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            BackColor = Theme.Button;
+            ForeColor = Theme.Text;
+            Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            Cursor = Cursors.Hand;
+            Accent = Theme.Accent;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
+        }
+
+        public bool IsSelected { get; set; }
+        public Color Accent { get; set; }
+        public bool ShowCloseGlyph { get; set; }
+
+        public bool IsCloseHit(Point point)
+        {
+            if (!ShowCloseGlyph)
+            {
+                return false;
+            }
+
+            return CloseGlyphBounds().Contains(point);
+        }
+
+        protected override void OnMouseEnter(System.EventArgs e)
+        {
+            _hover = true;
+            Invalidate();
+            base.OnMouseEnter(e);
+        }
+
+        protected override void OnMouseLeave(System.EventArgs e)
+        {
+            _hover = false;
+            Invalidate();
+            base.OnMouseLeave(e);
+        }
+
+        protected override void OnPaint(PaintEventArgs pevent)
+        {
+            pevent.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            int radius = 8;
+
+            Color fill = IsSelected ? Theme.Selected : (_hover ? Theme.Hover : Theme.Button);
+            using (GraphicsPath path = RoundedRect(rect, radius))
+            using (SolidBrush brush = new SolidBrush(fill))
+            using (Pen border = new Pen(IsSelected ? Accent : Theme.Border))
+            {
+                pevent.Graphics.FillPath(brush, path);
+                pevent.Graphics.DrawPath(border, path);
+            }
+
+            Rectangle textRect = ShowCloseGlyph
+                ? new Rectangle(rect.Left + 8, rect.Top, rect.Width - 30, rect.Height)
+                : rect;
+
+            TextFormatFlags flags = (ShowCloseGlyph ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter) |
+                TextFormatFlags.VerticalCenter |
+                TextFormatFlags.EndEllipsis |
+                TextFormatFlags.NoPadding;
+            TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, flags);
+
+            if (ShowCloseGlyph)
+            {
+                Rectangle close = CloseGlyphBounds();
+                using (Pen pen = new Pen(_hover ? Color.White : Theme.Muted, 1.7f))
+                {
+                    pevent.Graphics.DrawLine(pen, close.Left + 5, close.Top + 5, close.Right - 5, close.Bottom - 5);
+                    pevent.Graphics.DrawLine(pen, close.Right - 5, close.Top + 5, close.Left + 5, close.Bottom - 5);
+                }
+            }
+        }
+
+        private Rectangle CloseGlyphBounds()
+        {
+            return new Rectangle(Width - 25, (Height - 20) / 2, 20, 20);
+        }
+
+        private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        {
+            int diameter = radius * 2;
+            GraphicsPath path = new GraphicsPath();
+            path.AddArc(bounds.Left, bounds.Top, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Top, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.Left, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+    }
+}
