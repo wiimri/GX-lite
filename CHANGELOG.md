@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.3`
+- Version publicada: `1.5`
 - Fecha: `2026-06-08`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,45 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.5 - Gestion avanzada de favoritos
+
+Fecha: `2026-06-08`
+
+Cambios:
+
+- Se agrego seleccion multiple de bookmarks con checkboxes en el gestor de favoritos.
+- Nuevo boton "Seleccionar todos / Deseleccionar todos" en la barra de herramientas.
+- Nuevo boton "Eliminar seleccionados" que elimina multiples favoritos con una sola confirmacion.
+- Nuevo boton "Eliminar todos" para borrar todos los favoritos de una vez con confirmacion.
+- La tecla Suprimir (Delete) elimina los favoritos seleccionados directamente.
+- Ctrl+A selecciona o deselecciona todos los favoritos visibles.
+- Eliminacion individual ya no requiere confirmacion extra (un solo clic).
+- Se agrego checkbox maestro en la cabecera de la tabla.
+- Las filas seleccionadas se resaltan con un fondo distinto.
+- Se agrego indicador de cuantos favoritos estan seleccionados.
+- Se agrego un tip visible sobre las teclas Suprimir y Ctrl+A.
+
+Notas:
+
+- La version 1.4 ya habia incluido importacion con jerarquia de carpetas y remocion de Opera Addons.
+- Esta version completa la experiencia de gestion masiva de favoritos.
+
+## v1.4 - Bookmarks con carpetas y mejoras de UI
+
+Fecha: `2026-06-08`
+
+Cambios:
+
+- Se mejoro la importacion de bookmarks HTML conservando la jerarquia original de carpetas.
+- La barra de favoritos ahora muestra carpetas como botones desplegables con dropdown.
+- Se agrego menu contextual en carpetas de la barra de favoritos.
+- Se removio el boton de Opera Addons ya que no era funcional.
+- El boton de menu principal ahora usa el icono hamburguesa estandar.
+
+Notas:
+
+- La importacion ahora usa un parser basado en stack para respetar la estructura DL/DT/DD del HTML de bookmarks.
 
 ## v1.3 - Correccion de links desde novedades
 

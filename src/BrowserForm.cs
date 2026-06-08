@@ -717,6 +717,45 @@ namespace GXLightBrowser
                 }
                 return;
             }
+
+            const string deleteBatchPrefix = "gxlight:bookmarks:delete-batch:";
+            if (message.StartsWith(deleteBatchPrefix, StringComparison.Ordinal))
+            {
+                string data = message.Substring(deleteBatchPrefix.Length);
+                string[] entries = data.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int j = 0; j < entries.Length; j++)
+                {
+                    string[] parts = entries[j].Split('|');
+                    if (parts.Length >= 3)
+                    {
+                        string title = Base64Decode(parts[0]);
+                        string url = Base64Decode(parts[1]);
+                        string folder = Base64Decode(parts[2]);
+
+                        _bookmarks.RemoveAll(delegate(BookmarkEntry b)
+                        {
+                            return string.Equals(b.Title, title, StringComparison.OrdinalIgnoreCase) &&
+                                   string.Equals(b.Url, url, StringComparison.OrdinalIgnoreCase) &&
+                                   string.Equals(b.Folder, folder, StringComparison.OrdinalIgnoreCase);
+                        });
+                    }
+                }
+
+                SaveBookmarks();
+                RebuildBookmarksBar();
+                NavigateInternal("bookmarks");
+                return;
+            }
+
+            const string deleteAllPrefix = "gxlight:bookmarks:delete-all";
+            if (string.Equals(message, deleteAllPrefix, StringComparison.Ordinal))
+            {
+                _bookmarks.Clear();
+                SaveBookmarks();
+                RebuildBookmarksBar();
+                NavigateInternal("bookmarks");
+                return;
+            }
         }
 
         private void WebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
@@ -2669,6 +2708,7 @@ namespace GXLightBrowser
             return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<title>Bookmarks Manager</title>" +
                 "<style>" +
+                "*{box-sizing:border-box}" +
                 "body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif;display:flex;min-height:100vh}" +
                 "aside{width:240px;background:#13171f;border-right:1px solid #222936;padding:20px;display:flex;flex-direction:column;gap:15px}" +
                 "aside h2{color:#72f5ff;font-size:16px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:8px}" +
@@ -2677,83 +2717,124 @@ namespace GXLightBrowser
                 ".folder-item:hover,.folder-item.active{background:#1c2331;color:#72f5ff}" +
                 ".btn-new-folder{background:transparent;border:1px dashed #484d5c;color:#aeb8c4;padding:10px;border-radius:4px;cursor:pointer;text-align:center;font-size:13px;transition:border-color .2s,color .2s;margin-top:10px}" +
                 ".btn-new-folder:hover{border-color:#72f5ff;color:#72f5ff}" +
-                "main{flex:1;padding:30px;display:flex;flex-direction:column;gap:20px}" +
-                ".header-bar{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}" +
+                "main{flex:1;padding:30px;display:flex;flex-direction:column;gap:16px;outline:none}" +
+                ".header-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}" +
                 "h1{color:#72f5ff;font-size:28px;margin:0}" +
-                ".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:300px;display:flex;align-items:center}" +
+                ".toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}" +
+                ".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:280px;display:flex;align-items:center}" +
                 ".search-box input{background:transparent;border:none;color:#fff;font-size:14px;outline:none;width:100%}" +
-                ".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:hidden}" +
+                ".btn-toolbar{background:#1c2331;border:1px solid #2e3440;color:#aeb8c4;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}" +
+                ".btn-toolbar:hover{border-color:#72f5ff;color:#72f5ff}" +
+                ".btn-toolbar.danger{border-color:#ff6b6b33;color:#ff6b6b}" +
+                ".btn-toolbar.danger:hover{background:#ff6b6b22;border-color:#ff6b6b}" +
+                ".btn-toolbar:disabled{opacity:.35;cursor:not-allowed}" +
+                ".selection-info{color:#72f5ff;font-size:13px;font-weight:600;min-width:100px}" +
+                ".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:auto;flex:1}" +
                 "table{border-collapse:collapse;width:100%;text-align:left}" +
-                "th,td{padding:12px 16px;border-bottom:1px solid #222936;font-size:14px}" +
-                "th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:12px;letter-spacing:.5px}" +
+                "th,td{padding:10px 14px;border-bottom:1px solid #222936;font-size:13px}" +
+                "th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0;z-index:1}" +
                 "tr:last-child td{border-bottom:none}" +
                 "tr:hover td{background:#171c26}" +
+                "tr.selected td{background:#1a2a35}" +
                 "a{color:#72f5ff;text-decoration:none;word-break:break-all}" +
                 "a:hover{text-decoration:underline}" +
-                ".actions{display:flex;align-items:center;gap:10px}" +
-                ".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s}" +
-                ".btn-delete:hover{background:rgba(255,107,107,.1)}" +
-                "select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:13px}" +
+                ".actions{display:flex;align-items:center;gap:8px}" +
+                ".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s;font-size:13px}" +
+                ".btn-delete:hover{background:rgba(255,107,107,.15)}" +
+                "select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:12px}" +
                 "select:hover{border-color:#72f5ff}" +
+                "input[type=checkbox]{accent-color:#72f5ff;width:16px;height:16px;cursor:pointer}" +
+                ".hint{color:#555e6e;font-size:12px;margin-top:4px}" +
                 "</style></head><body>" +
-                "<aside><h2>📁 Carpetas</h2><ul class='folder-list' id='folderList'></ul><button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button></aside>" +
-                "<main><div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1><div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div></div>" +
-                "<div class='table-container'><table><thead><tr><th>Título</th><th>URL</th><th>Carpeta</th><th>Acciones</th></tr></thead>" +
-                "<tbody id='bookmarksTableBody'></tbody></table></div></main>" +
+                "<aside><h2>\ud83d\udcc1 Carpetas</h2><ul class='folder-list' id='folderList'></ul><button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button></aside>" +
+                "<main id='mainArea' tabindex='0'><div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1></div>" +
+                "<div class='toolbar'>" +
+                "<div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div>" +
+                "<button class='btn-toolbar' onclick='toggleSelectAll()' id='btnSelectAll'>Seleccionar todos</button>" +
+                "<button class='btn-toolbar danger' onclick='deleteSelected()' id='btnDeleteSelected' disabled>Eliminar seleccionados</button>" +
+                "<button class='btn-toolbar danger' onclick='deleteAll()' id='btnDeleteAll'>Eliminar todos</button>" +
+                "<span class='selection-info' id='selectionInfo'></span>" +
+                "</div>" +
+                "<div class='table-container'><table><thead><tr><th style='width:40px'><input type='checkbox' id='headerCheckbox' onchange='toggleSelectAll()'></th><th>Titulo</th><th>URL</th><th>Carpeta</th><th>Acciones</th></tr></thead>" +
+                "<tbody id='bookmarksTableBody'></tbody></table></div>" +
+                "<div class='hint'>Tip: selecciona varios favoritos con los checkboxes y presiona la tecla <b>Suprimir</b> (Delete) para eliminarlos.</div>" +
+                "</main>" +
                 "<script>" +
                 "const bookmarks=" + json + ";" +
                 "let activeFilter='all';" +
-                "bookmarks.forEach((b,idx)=>b.originalIndex=idx);" +
-                "function getFolders(){const folders=new Set();bookmarks.forEach(b=>{if(b.folder&&b.folder.trim()!==''){folders.add(b.folder);}});return Array.from(folders);}" +
-                "function renderFolders(){const folderList=document.getElementById('folderList');const uniqueFolders=getFolders();" +
-                "let html='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(\\'all\\')\">📂 Todos</li>'+" +
-                "'<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(\\'Favorites bar\\')\">⭐ Barra</li>';" +
-                "uniqueFolders.forEach(f=>{if(f!=='Favorites bar'){" +
-                "html+='<li class=\"folder-item '+(activeFilter===f?\"active\":\"\")+'\" onclick=\"filterFolder(\\''+escapeJs(f)+'\\')\">📁 '+escapeHtml(f)+'</li>';" +
-                "}});" +
-                "folderList.innerHTML=html;}" +
-                "function filterFolder(folder){activeFilter=folder;document.getElementById('pageTitle').innerText=folder==='all'?'Todos':folder;renderFolders();renderBookmarks();}" +
-                "function renderBookmarks(){const tbody=document.getElementById('bookmarksTableBody');const search=document.getElementById('searchInput').value.toLowerCase();const uniqueFolders=getFolders();" +
-                "if(!uniqueFolders.includes('Favorites bar')){uniqueFolders.push('Favorites bar');}" +
-                "let filtered=bookmarks;" +
-                "if(activeFilter==='all'){filtered=bookmarks.filter(b=>b.url&&b.url.trim()!=='');}else{filtered=bookmarks.filter(b=>b.folder===activeFilter);}" +
-                "if(search){filtered=filtered.filter(b=>(b.title&&b.title.toLowerCase().includes(search))||(b.url&&b.url.toLowerCase().includes(search)));}" +
-                "let html='';" +
-                "if(filtered.length===0){html='<tr><td colspan=\"4\" style=\"text-align:center;color:#aeb8c4;\">No hay favoritos en esta seccion.</td></tr>';}" +
-                "else{filtered.forEach(b=>{" +
-                "const isPlaceholder=!b.url||b.url.trim()==='';" +
-                "const displayUrl=isPlaceholder?'<i>(Carpeta Vacia)</i>':('<a href=\"#\" onclick=\"navigate('+b.originalIndex+');return false;\">'+escapeHtml(b.url)+'</a>');" +
-                "let folderOptions='';" +
-                "uniqueFolders.forEach(f=>{" +
-                "folderOptions+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';" +
-                "});" +
-                "html+='<tr><td style=\"font-weight:500;\">'+escapeHtml(b.title||'Sin titulo')+'</td><td>'+displayUrl+'</td><td><select onchange=\"moveBookmark('+b.originalIndex+',this.value)\">'+folderOptions+'</select></td><td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteBookmark('+b.originalIndex+')\">Eliminar</button></div></td></tr>';" +
-                "});}" +
-                "tbody.innerHTML=html;}" +
-                "function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}" +
-                "function createNewFolder(){const name=prompt('Nombre de la nueva carpeta:');if(name&&name.trim()!==''){" +
-                "const base64Folder=btoa(unescape(encodeURIComponent(name.trim())));" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+base64Folder);" +
-                "}}" +
-                "function deleteBookmark(idx){" +
-                "const b=bookmarks[idx];" +
-                "if(confirm('¿Seguro que quieres eliminar este favorito?')){" +
-                "const b64Title=btoa(unescape(encodeURIComponent(b.title||\"\")));" +
-                "const b64Url=btoa(unescape(encodeURIComponent(b.url||\"\")));" +
-                "const b64Folder=btoa(unescape(encodeURIComponent(b.folder||\"\")));" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64Title+'|'+b64Url+'|'+b64Folder);" +
-                "}}" +
-                "function moveBookmark(idx,newFolder){" +
-                "const b=bookmarks[idx];" +
-                "const b64Title=btoa(unescape(encodeURIComponent(b.title||\"\")));" +
-                "const b64Url=btoa(unescape(encodeURIComponent(b.url||\"\")));" +
-                "const b64Folder=btoa(unescape(encodeURIComponent(b.folder||\"\")));" +
-                "const b64NewFolder=btoa(unescape(encodeURIComponent(newFolder)));" +
-                "window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64Title+'|'+b64Url+'|'+b64Folder+'|'+b64NewFolder);" +
+                "const selected=new Set();" +
+                "bookmarks.forEach(function(b,idx){b.originalIndex=idx;});" +
+                "function b64(s){return btoa(unescape(encodeURIComponent(s||'')));}" +
+                "function getFolders(){var folders=[];bookmarks.forEach(function(b){if(b.folder&&b.folder.trim()!==''&&folders.indexOf(b.folder)===-1){folders.push(b.folder);}});return folders;}" +
+                "function getVisibleIndices(){var search=document.getElementById('searchInput').value.toLowerCase();var filtered=[];" +
+                "for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];" +
+                "if(activeFilter==='all'){if(!b.url||b.url.trim()==='')continue;}else{if(b.folder!==activeFilter)continue;}" +
+                "if(search&&!((b.title&&b.title.toLowerCase().indexOf(search)>=0)||(b.url&&b.url.toLowerCase().indexOf(search)>=0)))continue;" +
+                "filtered.push(b.originalIndex);}return filtered;}" +
+                "function updateSelectionUI(){var count=selected.size;document.getElementById('selectionInfo').innerText=count>0?count+' seleccionado'+(count>1?'s':''):'';" +
+                "document.getElementById('btnDeleteSelected').disabled=count===0;" +
+                "var visible=getVisibleIndices();var allChecked=visible.length>0;" +
+                "for(var i=0;i<visible.length;i++){if(!selected.has(visible[i])){allChecked=false;break;}}" +
+                "document.getElementById('headerCheckbox').checked=allChecked&&visible.length>0;" +
+                "document.getElementById('btnSelectAll').innerText=allChecked&&visible.length>0?'Deseleccionar todos':'Seleccionar todos';}" +
+                "function toggleCheck(idx){if(selected.has(idx)){selected.delete(idx);}else{selected.add(idx);}updateSelectionUI();" +
+                "var row=document.querySelector('tr[data-idx=\"'+idx+'\"]');if(row){row.className=selected.has(idx)?'selected':'';}" +
                 "}" +
+                "function toggleSelectAll(){var visible=getVisibleIndices();var allChecked=true;" +
+                "for(var i=0;i<visible.length;i++){if(!selected.has(visible[i])){allChecked=false;break;}}" +
+                "for(var i=0;i<visible.length;i++){if(allChecked){selected.delete(visible[i]);}else{selected.add(visible[i]);}}" +
+                "renderBookmarks();updateSelectionUI();}" +
+                "function deleteSelected(){if(selected.size===0)return;" +
+                "if(!confirm('\u00bfEliminar '+selected.size+' favorito'+(selected.size>1?'s':'')+'?'))return;" +
+                "var payload='';selected.forEach(function(idx){var b=bookmarks[idx];" +
+                "if(payload.length>0)payload+=';';payload+=b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder);});" +
+                "selected.clear();" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:delete-batch:'+payload);}" +
+                "function deleteAll(){if(bookmarks.length===0)return;" +
+                "if(!confirm('\u00bfSeguro que quieres ELIMINAR TODOS los favoritos? Esta accion no se puede deshacer.'))return;" +
+                "selected.clear();" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:delete-all');}" +
+                "function renderFolders(){var folderList=document.getElementById('folderList');var uniqueFolders=getFolders();" +
+                "var html='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(\\'all\\')\">\ud83d\udcc2 Todos</li>'+" +
+                "'<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(\\'Favorites bar\\')\">\u2b50 Barra</li>';" +
+                "for(var i=0;i<uniqueFolders.length;i++){var f=uniqueFolders[i];if(f!=='Favorites bar'){" +
+                "html+='<li class=\"folder-item '+(activeFilter===f?'active':'')+'\" onclick=\"filterFolder(\\''+escapeJs(f)+'\\')\"'>\ud83d\udcc1 '+escapeHtml(f)+'</li>';" +
+                "}}" +
+                "folderList.innerHTML=html;}" +
+                "function filterFolder(folder){activeFilter=folder;document.getElementById('pageTitle').innerText=folder==='all'?'Todos los favoritos':folder;renderFolders();renderBookmarks();updateSelectionUI();}" +
+                "function renderBookmarks(){var tbody=document.getElementById('bookmarksTableBody');var uniqueFolders=getFolders();" +
+                "if(uniqueFolders.indexOf('Favorites bar')===-1){uniqueFolders.push('Favorites bar');}" +
+                "var visible=getVisibleIndices();" +
+                "var html='';" +
+                "if(visible.length===0){html='<tr><td colspan=\"5\" style=\"text-align:center;color:#aeb8c4;padding:30px;\">No hay favoritos en esta seccion.</td></tr>';}" +
+                "else{for(var vi=0;vi<visible.length;vi++){var idx=visible[vi];var b=bookmarks[idx];" +
+                "var isPlaceholder=!b.url||b.url.trim()==='';" +
+                "var displayUrl=isPlaceholder?'<i style=\"color:#555e6e\">(Carpeta vacia)</i>':'<a href=\"#\" onclick=\"navigate('+idx+');return false;\">'+escapeHtml(b.url)+'</a>';" +
+                "var folderOptions='';" +
+                "for(var fi=0;fi<uniqueFolders.length;fi++){var f=uniqueFolders[fi];" +
+                "folderOptions+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';" +
+                "}" +
+                "var isChecked=selected.has(idx);" +
+                "html+='<tr data-idx=\"'+idx+'\" class=\"'+(isChecked?'selected':'')+'\"><td><input type=\"checkbox\" '+(isChecked?'checked ':'')+' onchange=\"toggleCheck('+idx+')\"></td><td style=\"font-weight:500;\">'+escapeHtml(b.title||'Sin titulo')+'</td><td>'+displayUrl+'</td><td><select onchange=\"moveBookmark('+idx+',this.value)\">'+folderOptions+'</select></td><td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteSingle('+idx+')\">\u2715</button></div></td></tr>';" +
+                "}}" +
+                "tbody.innerHTML=html;updateSelectionUI();}" +
+                "function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}" +
+                "function createNewFolder(){var name=prompt('Nombre de la nueva carpeta:');if(name&&name.trim()!==''){" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+b64(name.trim()));" +
+                "}}" +
+                "function deleteSingle(idx){" +
+                "var b=bookmarks[idx];" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder));}" +
+                "function moveBookmark(idx,newFolder){" +
+                "var b=bookmarks[idx];" +
+                "window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder)+'|'+b64(newFolder));}" +
                 "function escapeHtml(str){if(!str)return '';return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;');}" +
                 "function escapeJs(str){if(!str)return '';return str.replace(/\\\\/g,'\\\\\\\\').replace(/\\'/g,'\\\\\\'').replace(/\"/g,'\\\\\"');}" +
-                "renderFolders();renderBookmarks();" +
+                "document.getElementById('mainArea').addEventListener('keydown',function(e){" +
+                "if(e.key==='Delete'||e.keyCode===46){e.preventDefault();deleteSelected();}" +
+                "if(e.key==='a'&&(e.ctrlKey||e.metaKey)){e.preventDefault();toggleSelectAll();}" +
+                "});" +
+                "renderFolders();renderBookmarks();document.getElementById('mainArea').focus();" +
                 "</script></body></html>";
         }
 
