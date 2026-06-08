@@ -12,6 +12,7 @@ namespace GXLightBrowser
         public static readonly string Profile = Path.Combine(AppData, "Profile");
         public static readonly string Extensions = Path.Combine(AppData, "Extensions");
         public static readonly string Filters = Path.Combine(AppData, "filters.txt");
+        public static readonly string Settings = Path.Combine(AppData, "settings.ini");
 
         public static void Ensure()
         {

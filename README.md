@@ -1,5 +1,7 @@
 # GX Light Browser
 
+Current version: `1.0`
+
 GX Light Browser is a lightweight Windows browser prototype inspired by the workflow of Opera GX and Brave, without copying either product's branding or protected UI.
 
 It uses Microsoft Edge WebView2 instead of Electron, so the app is small and relies on the WebView2 runtime already present on many Windows systems.
@@ -28,6 +30,17 @@ It uses Microsoft Edge WebView2 instead of Electron, so the app is small and rel
 - Tab islands for grouped new tabs.
 - Real tab suspension/discarding for inactive tabs.
 - Visible memory monitor and configurable GX Control limiters.
+- One-time update notes tab per installed version.
+
+## Versioning
+
+GX Light Browser uses simple user-facing versions:
+
+- current baseline: `1.0`
+- each improvement or fix increments the minor version: `1.1`, `1.2`, ... `1.19`
+- after `1.19`, the next line becomes `2.0`
+
+When a new version runs for the first time, the browser opens `gxlight://updated` with a short summary. The app stores the last seen version in `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, so the update tab only appears once per version.
 
 ## Build
 

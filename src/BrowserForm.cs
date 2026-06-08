@@ -14,6 +14,7 @@ namespace GXLightBrowser
     public sealed class BrowserForm : Form
     {
         private const string HomeUrl = "gxlight://home";
+        private const string UpdatedUrl = "gxlight://updated";
         private const string ChromeStoreUrl = "https://chromewebstore.google.com/category/extensions?pli=1";
         private const string OperaAddonsUrl = "https://addons.opera.com/en/extensions/?utm_source=ext_sidebar&hl=en-US";
 
@@ -42,6 +43,7 @@ namespace GXLightBrowser
         private readonly List<HistoryEntry> _history = new List<HistoryEntry>();
         private readonly List<DownloadEntry> _downloads = new List<DownloadEntry>();
         private readonly GxControlSettings _gxControl = new GxControlSettings();
+        private AppSettings _appSettings = new AppSettings();
 
         private CoreWebView2Environment _environment;
         private bool _adBlockEnabled = true;
@@ -347,6 +349,7 @@ namespace GXLightBrowser
         private async Task InitializeAsync()
         {
             AppPaths.Ensure();
+            _appSettings = AppSettings.Load();
             EnsureDefaultFilters();
             _adBlocker.Load(AppPaths.Filters);
 
@@ -356,9 +359,22 @@ namespace GXLightBrowser
             _environment = await CoreWebView2Environment.CreateAsync(null, AppPaths.Profile, options);
 
             await CreateTabAsync(HomeUrl);
+            await ShowUpdateNoticeIfNeededAsync();
             _memoryTimer.Start();
             UpdateMemoryMonitor();
             UpdateStatus();
+        }
+
+        private async Task ShowUpdateNoticeIfNeededAsync()
+        {
+            if (string.Equals(_appSettings.LastSeenVersion, VersionInfo.CurrentVersion, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            await CreateTabAsync(UpdatedUrl);
+            _appSettings.LastSeenVersion = VersionInfo.CurrentVersion;
+            _appSettings.Save();
         }
 
         private async Task<BrowserTab> CreateTabAsync(string url)
@@ -598,6 +614,13 @@ namespace GXLightBrowser
                 return;
             }
 
+            if (url == UpdatedUrl)
+            {
+                web.NavigateToString(UpdateNoticeHtml());
+                _address.Text = UpdatedUrl;
+                return;
+            }
+
             web.CoreWebView2.Navigate(NormalizeInput(url));
         }
 
@@ -703,6 +726,7 @@ namespace GXLightBrowser
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
             menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
+            menu.Items.Add("Update notes                                v" + VersionInfo.CurrentVersion, null, delegate { NavigateActive(UpdatedUrl); });
             menu.Items.Add("Developer tools                             F12", null, delegate
             {
                 WebView2 web = ActiveWebView();
@@ -1222,6 +1246,11 @@ namespace GXLightBrowser
                 return HomeUrl;
             }
 
+            if (string.Equals(value, UpdatedUrl, StringComparison.OrdinalIgnoreCase))
+            {
+                return UpdatedUrl;
+            }
+
             if (value.IndexOf("://", StringComparison.Ordinal) >= 0)
             {
                 return value;
@@ -1484,6 +1513,27 @@ namespace GXLightBrowser
                 "<article class='card'><b>Opera Addons</b><a class='link' href='" + OperaAddonsUrl + "'>Abrir tienda</a></article>" +
                 "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extension.</span></article></div>" +
                 "</section></main></body></html>";
+        }
+
+        private static string UpdateNoticeHtml()
+        {
+            StringBuilder items = new StringBuilder();
+            string[] highlights = VersionInfo.Highlights();
+            for (int i = 0; i < highlights.Length; i++)
+            {
+                items.Append("<li>").Append(EscapeHtml(highlights[i])).Append("</li>");
+            }
+
+            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
+                "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
+                "main{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#121620,#0d0f14 60%,#17111e)}" +
+                "section{width:min(820px,92vw);border:1px solid #2e3440;background:#171a22;padding:28px}" +
+                "h1{margin:0 0 8px;color:#72f5ff;font-size:34px;letter-spacing:0}p{color:#c3ced8;line-height:1.5}" +
+                "ul{margin:18px 0 0;padding-left:22px}li{margin:10px 0;color:#eef7fa}.tag{display:inline-block;color:#061116;background:#72f5ff;padding:5px 9px;font-weight:700;margin-bottom:14px}</style></head>" +
+                "<body><main><section><span class='tag'>Version " + VersionInfo.CurrentVersion + "</span>" +
+                "<h1>" + EscapeHtml(VersionInfo.ReleaseName) + "</h1>" +
+                "<p>Esta pestana aparece solo una vez por version instalada. Si vuelves a abrir el navegador, no se mostrara de nuevo hasta que subamos a otra version.</p>" +
+                "<ul>" + items.ToString() + "</ul></section></main></body></html>";
         }
 
         private static void EnsureDefaultFilters()
