@@ -2,19 +2,18 @@ namespace GXLightBrowser
 {
     internal static class VersionInfo
     {
-        public const string CurrentVersion = "1.1";
-        public const string ReleaseName = "GX Light Browser 1.1";
+        public const string CurrentVersion = "1.2";
+        public const string ReleaseName = "GX Light Browser 1.2";
 
         public static string[] Highlights()
         {
             return new string[]
             {
-                "Barra de favoritos con acceso rapido y apertura con middle-click.",
-                "Importacion y exportacion de bookmarks en formato HTML compatible con navegadores.",
-                "Menu de bookmarks para guardar la pagina actual y administrar favoritos.",
-                "Menu contextual de pestanas con seleccion multiple y creacion de tab islands coloreadas.",
-                "Importacion/exportacion de passwords en una boveda local protegida por Windows DPAPI.",
-                "La pestana de novedades sigue apareciendo solo una vez por version."
+                "El navegador consulta update.json en GitHub al iniciar.",
+                "Las novedades ya no dependen solo de VersionInfo compilado dentro del exe.",
+                "Si GitHub no responde, se usa un manifiesto local de respaldo.",
+                "El aviso se sigue mostrando solo una vez por version publicada.",
+                "El menu Update notes abre la informacion cargada desde el manifiesto."
             };
         }
     }

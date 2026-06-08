@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.1`
+Version actual: `1.2`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -41,13 +41,23 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.1`
-- cada mejora o correccion del navegador sube la version menor: `1.2`, `1.3`, ... `1.19`
+- linea de mejora actual: `1.2`
+- cada mejora o correccion del navegador sube la version menor: `1.3`, `1.4`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
 
-Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni lo que ve el usuario al iniciar el navegador.
+Desde `1.2`, el aviso de novedades se lee desde `update.json` en GitHub:
+
+```text
+https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
+```
+
+Eso permite cambiar el texto de novedades, links y version publicada desde GitHub. Si el navegador no puede conectar a GitHub, usa las notas locales compiladas como respaldo.
+
+Importante: cambiar `update.json` muestra novedades o avisa que hay una version disponible, pero no cambia magicamente el binario instalado. Para que el usuario reciba codigo nuevo sin hacerlo manualmente, el siguiente paso es crear un actualizador binario que descargue un release firmado y reemplace el `.exe`.
+
+Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni la experiencia dentro del navegador.
 
 ## Compilacion
 

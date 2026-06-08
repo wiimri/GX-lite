@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-07
 
-Version actual: 1.1
+Version actual: 1.2
 
 ## Estado Actual
 
@@ -27,6 +27,7 @@ Medicion local despues de iniciar la app:
 - Se agrego barra de favoritos con import/export HTML compatible con navegadores.
 - Se agrego menu contextual de pestanas con seleccion multiple e islas coloreadas.
 - Se agrego boveda local DPAPI para import/export CSV de passwords.
+- Se agrego manifiesto remoto `update.json` en GitHub para mostrar novedades sin recompilar solo el texto del aviso.
 - Se mantuvo el build limpio y las pruebas UI automatizadas.
 
 ## Hallazgos Criticos
@@ -155,7 +156,7 @@ Falta para uso diario:
 ### P4 - Distribucion
 
 - Instalador.
-- Auto-update.
+- Auto-update binario basado en releases de GitHub.
 - Firma de ejecutable.
 - Builds x64/arm64.
 

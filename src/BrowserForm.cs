@@ -51,6 +51,7 @@ namespace GXLightBrowser
         private readonly Dictionary<int, Color> _islandColors = new Dictionary<int, Color>();
         private readonly GxControlSettings _gxControl = new GxControlSettings();
         private AppSettings _appSettings = new AppSettings();
+        private UpdateManifest _updateManifest = UpdateManifest.LocalFallback();
 
         private CoreWebView2Environment _environment;
         private bool _adBlockEnabled = true;
@@ -392,13 +393,14 @@ namespace GXLightBrowser
 
         private async Task ShowUpdateNoticeIfNeededAsync()
         {
-            if (string.Equals(_appSettings.LastSeenVersion, VersionInfo.CurrentVersion, StringComparison.Ordinal))
+            _updateManifest = await UpdateManifest.LoadLatestAsync();
+            if (string.Equals(_appSettings.LastSeenVersion, _updateManifest.Version, StringComparison.Ordinal))
             {
                 return;
             }
 
             await CreateTabAsync(UpdatedUrl);
-            _appSettings.LastSeenVersion = VersionInfo.CurrentVersion;
+            _appSettings.LastSeenVersion = _updateManifest.Version;
             _appSettings.Save();
         }
 
@@ -767,7 +769,7 @@ namespace GXLightBrowser
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
             menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
-            menu.Items.Add("Update notes                                v" + VersionInfo.CurrentVersion, null, delegate { NavigateActive(UpdatedUrl); });
+            menu.Items.Add("Update notes                                v" + _updateManifest.Version, null, delegate { NavigateActive(UpdatedUrl); });
             menu.Items.Add("Developer tools                             F12", null, delegate
             {
                 WebView2 web = ActiveWebView();
@@ -2381,13 +2383,24 @@ namespace GXLightBrowser
                 "</section></main></body></html>";
         }
 
-        private static string UpdateNoticeHtml()
+        private string UpdateNoticeHtml()
         {
             StringBuilder items = new StringBuilder();
-            string[] highlights = VersionInfo.Highlights();
+            UpdateManifest manifest = _updateManifest ?? UpdateManifest.LocalFallback();
+            string[] highlights = manifest.Highlights ?? VersionInfo.Highlights();
             for (int i = 0; i < highlights.Length; i++)
             {
                 items.Append("<li>").Append(EscapeHtml(highlights[i])).Append("</li>");
+            }
+
+            string links = string.Empty;
+            if (!string.IsNullOrWhiteSpace(manifest.DownloadUrl))
+            {
+                links += "<a class='link' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Ver release</a>";
+            }
+            if (!string.IsNullOrWhiteSpace(manifest.SourceUrl))
+            {
+                links += "<a class='link secondary' href='" + EscapeHtml(manifest.SourceUrl) + "'>Abrir GitHub</a>";
             }
 
             return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
@@ -2395,11 +2408,14 @@ namespace GXLightBrowser
                 "main{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#121620,#0d0f14 60%,#17111e)}" +
                 "section{width:min(820px,92vw);border:1px solid #2e3440;background:#171a22;padding:28px}" +
                 "h1{margin:0 0 8px;color:#72f5ff;font-size:34px;letter-spacing:0}p{color:#c3ced8;line-height:1.5}" +
-                "ul{margin:18px 0 0;padding-left:22px}li{margin:10px 0;color:#eef7fa}.tag{display:inline-block;color:#061116;background:#72f5ff;padding:5px 9px;font-weight:700;margin-bottom:14px}</style></head>" +
-                "<body><main><section><span class='tag'>Version " + VersionInfo.CurrentVersion + "</span>" +
-                "<h1>" + EscapeHtml(VersionInfo.ReleaseName) + "</h1>" +
-                "<p>Esta pestana aparece solo una vez por version instalada. Si vuelves a abrir el navegador, no se mostrara de nuevo hasta que subamos a otra version.</p>" +
-                "<ul>" + items.ToString() + "</ul></section></main></body></html>";
+                "ul{margin:18px 0 0;padding-left:22px}li{margin:10px 0;color:#eef7fa}.tag{display:inline-block;color:#061116;background:#72f5ff;padding:5px 9px;font-weight:700;margin-bottom:14px}" +
+                ".links{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.link{background:#72f5ff;color:#061116;text-decoration:none;font-weight:700;padding:10px 13px}.secondary{background:#252833;color:#eef7fa;border:1px solid #484d5c}</style></head>" +
+                "<body><main><section><span class='tag'>Version " + EscapeHtml(manifest.Version) + "</span>" +
+                "<h1>" + EscapeHtml(manifest.ReleaseName) + "</h1>" +
+                "<p>Esta pestana se carga desde el manifiesto de actualizaciones en GitHub y aparece solo una vez por version publicada.</p>" +
+                "<p>Cliente instalado: <b>" + EscapeHtml(VersionInfo.CurrentVersion) + "</b>" +
+                (string.IsNullOrWhiteSpace(manifest.PublishedAt) ? string.Empty : " - Publicado: <b>" + EscapeHtml(manifest.PublishedAt) + "</b>") + "</p>" +
+                "<ul>" + items.ToString() + "</ul><div class='links'>" + links + "</div></section></main></body></html>";
         }
 
         private static void EnsureDefaultFilters()
