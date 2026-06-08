@@ -2,7 +2,7 @@
 
 Fecha: 2026-06-07
 
-Version actual: 1.2
+Version actual: 1.3
 
 ## Estado Actual
 
@@ -28,6 +28,7 @@ Medicion local despues de iniciar la app:
 - Se agrego menu contextual de pestanas con seleccion multiple e islas coloreadas.
 - Se agrego boveda local DPAPI para import/export CSV de passwords.
 - Se agrego manifiesto remoto `update.json` en GitHub para mostrar novedades sin recompilar solo el texto del aviso.
+- Se corrigio la navegacion de botones en paginas internas para abrir GitHub/Releases mediante el host WebView2.
 - Se mantuvo el build limpio y las pruebas UI automatizadas.
 
 ## Hallazgos Criticos

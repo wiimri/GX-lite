@@ -1,14 +1,14 @@
 {
-  "version": "1.2",
-  "releaseName": "GX Light Browser 1.2",
+  "version": "1.3",
+  "releaseName": "GX Light Browser 1.3",
   "publishedAt": "2026-06-08",
   "downloadUrl": "https://github.com/wiimri/GX-lite/releases",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "El navegador consulta este update.json desde GitHub al iniciar.",
-    "Las novedades se pueden editar en GitHub sin recompilar solo para cambiar el aviso.",
-    "El cliente .exe muestra la pestana de novedades una sola vez por version publicada.",
-    "Si no hay internet o GitHub no responde, el navegador usa las notas locales de respaldo.",
-    "Este paso prepara el camino para un actualizador binario mas completo."
+    "Se corrigio la apertura de Ver release y Abrir GitHub desde la pestana de novedades.",
+    "Las paginas internas ahora pueden pedir al host que navegue explicitamente a una URL externa.",
+    "El canal gxlight:navigate esta limitado a documentos internos generados por GX Light.",
+    "El navegador sigue leyendo este update.json desde GitHub al iniciar.",
+    "Este cambio prepara mejor la experiencia para futuros releases descargables."
   ]
 }

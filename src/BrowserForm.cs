@@ -448,6 +448,7 @@ namespace GXLightBrowser
             web.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
             web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YouTubeShieldsScript());
             web.CoreWebView2.WebResourceRequested += WebResourceRequested;
+            web.CoreWebView2.WebMessageReceived += WebMessageReceived;
             web.CoreWebView2.NewWindowRequested += NewWindowRequested;
             web.CoreWebView2.DownloadStarting += DownloadStarting;
             web.CoreWebView2.NavigationStarting += NavigationStarting;
@@ -517,6 +518,37 @@ namespace GXLightBrowser
             }
 
             UpdateStatus();
+        }
+
+        private void WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(e.Source) || !e.Source.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            string message;
+            try
+            {
+                message = e.TryGetWebMessageAsString();
+            }
+            catch
+            {
+                return;
+            }
+
+            const string navigatePrefix = "gxlight:navigate:";
+            if (string.IsNullOrWhiteSpace(message) || !message.StartsWith(navigatePrefix, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            string url = message.Substring(navigatePrefix.Length);
+            WebView2 web = WebViewForCore(sender as CoreWebView2) ?? ActiveWebView();
+            if (web != null && web.CoreWebView2 != null)
+            {
+                Navigate(web, url);
+            }
         }
 
         private void WebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
@@ -1837,6 +1869,25 @@ namespace GXLightBrowser
             return tab == null ? null : tab.WebView;
         }
 
+        private WebView2 WebViewForCore(CoreWebView2 core)
+        {
+            if (core == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.WebView != null && tab.WebView.CoreWebView2 == core)
+                {
+                    return tab.WebView;
+                }
+            }
+
+            return null;
+        }
+
         private void SyncAddress()
         {
             BrowserTab tab = ActiveTab();
@@ -2396,11 +2447,11 @@ namespace GXLightBrowser
             string links = string.Empty;
             if (!string.IsNullOrWhiteSpace(manifest.DownloadUrl))
             {
-                links += "<a class='link' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Ver release</a>";
+                links += "<a class='link' data-open-url='" + EscapeHtml(manifest.DownloadUrl) + "' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Ver release</a>";
             }
             if (!string.IsNullOrWhiteSpace(manifest.SourceUrl))
             {
-                links += "<a class='link secondary' href='" + EscapeHtml(manifest.SourceUrl) + "'>Abrir GitHub</a>";
+                links += "<a class='link secondary' data-open-url='" + EscapeHtml(manifest.SourceUrl) + "' href='" + EscapeHtml(manifest.SourceUrl) + "'>Abrir GitHub</a>";
             }
 
             return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
@@ -2415,7 +2466,9 @@ namespace GXLightBrowser
                 "<p>Esta pestana se carga desde el manifiesto de actualizaciones en GitHub y aparece solo una vez por version publicada.</p>" +
                 "<p>Cliente instalado: <b>" + EscapeHtml(VersionInfo.CurrentVersion) + "</b>" +
                 (string.IsNullOrWhiteSpace(manifest.PublishedAt) ? string.Empty : " - Publicado: <b>" + EscapeHtml(manifest.PublishedAt) + "</b>") + "</p>" +
-                "<ul>" + items.ToString() + "</ul><div class='links'>" + links + "</div></section></main></body></html>";
+                "<ul>" + items.ToString() + "</ul><div class='links'>" + links + "</div></section></main>" +
+                "<script>document.querySelectorAll('[data-open-url]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();window.chrome.webview.postMessage('gxlight:navigate:'+link.getAttribute('data-open-url'));});});</script>" +
+                "</body></html>";
         }
 
         private static void EnsureDefaultFilters()
