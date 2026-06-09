@@ -65,7 +65,12 @@ if ($null -eq $release) {
 }
 
 $uploadBase = $release.upload_url.Split("{")[0]
-foreach ($asset in $Assets) {
+$expandedAssets = @()
+foreach ($assetGroup in $Assets) {
+    $expandedAssets += $assetGroup.Split(",", [System.StringSplitOptions]::RemoveEmptyEntries)
+}
+
+foreach ($asset in $expandedAssets) {
     $resolved = Resolve-Path $asset
     $name = [Uri]::EscapeDataString([System.IO.Path]::GetFileName($resolved))
 
