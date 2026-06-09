@@ -613,7 +613,8 @@ namespace GXLightBrowser
                     BrowserTab active = ActiveTab();
                     if (active != null)
                     {
-                        active.BlockedRequests++;
+                        active.BlockedPopups++;
+                        active.LastBlockedRequest = "Ventana emergente no iniciada por el usuario";
                     }
                     UpdateStatus();
                     return;
@@ -642,9 +643,17 @@ namespace GXLightBrowser
             if (sourceTab != null)
             {
                 sourceTab.NavigationNotice = string.Empty;
+                sourceTab.BlockedRequests = 0;
+                sourceTab.BlockedPopups = 0;
+                sourceTab.LastBlockedRequest = string.Empty;
                 sourceTab.LastNavigationHost = Uri.TryCreate(e.Uri, UriKind.Absolute, out startingUri)
                     ? startingUri.Host.ToLowerInvariant()
                     : string.Empty;
+                sourceTab.SiteCompatibilityMode = IsHostOrSubdomain(sourceTab.LastNavigationHost, "crunchyroll.com");
+                if (sourceTab.SiteCompatibilityMode)
+                {
+                    sourceTab.NavigationNotice = "Modo compatibilidad Crunchyroll: Shields pausado para este sitio.";
+                }
             }
 
             if (_privacyFirewallEnabled)
@@ -898,10 +907,22 @@ namespace GXLightBrowser
 
             CoreWebView2 core = sender as CoreWebView2;
             WebView2 active = WebViewForCore(core) ?? ActiveWebView();
+            TabPage requestPage = active == null ? null : PageForWebView(active);
+            BrowserTab tab = requestPage == null ? ActiveTab() : requestPage.Tag as BrowserTab;
             Uri documentUri = null;
             if (active != null && active.Source != null)
             {
                 documentUri = active.Source;
+            }
+            if (tab != null && !string.IsNullOrWhiteSpace(tab.LastNavigationHost) &&
+                (documentUri == null || !string.Equals(documentUri.Host, tab.LastNavigationHost, StringComparison.OrdinalIgnoreCase)))
+            {
+                Uri.TryCreate("https://" + tab.LastNavigationHost + "/", UriKind.Absolute, out documentUri);
+            }
+
+            if (tab != null && tab.SiteCompatibilityMode)
+            {
+                return;
             }
 
             if (IsMediaCompatibilityRequest(e.ResourceContext, requestUri, documentUri))
@@ -920,12 +941,13 @@ namespace GXLightBrowser
                 return;
             }
 
-            TabPage requestPage = active == null ? null : PageForWebView(active);
-            BrowserTab tab = requestPage == null ? ActiveTab() : requestPage.Tag as BrowserTab;
             if (tab != null)
             {
                 tab.BlockedRequests++;
+                tab.LastBlockedRequest = requestUri.AbsoluteUri;
             }
+            Logger.Info("Blocked request [" + e.ResourceContext + "]: " + requestUri.AbsoluteUri +
+                " document=" + (documentUri == null ? "(unknown)" : documentUri.AbsoluteUri));
 
             e.Response = _environment.CreateWebResourceResponse(
                 new MemoryStream(new byte[0]),
@@ -2581,6 +2603,8 @@ namespace GXLightBrowser
                 "   firewall: " + (_privacyFirewallEnabled ? "activo" : "pausado") +
                 "   reglas firewall: " + _privacyFirewall.RuleCount +
                 "   bloqueadas en pestana: " + blocked +
+                (tab == null || tab.BlockedPopups == 0 ? string.Empty : "   popups bloqueados: " + tab.BlockedPopups) +
+                (tab == null || string.IsNullOrWhiteSpace(tab.LastBlockedRequest) ? string.Empty : "   ultima: " + Trim(tab.LastBlockedRequest, 70)) +
                 (tab == null || string.IsNullOrWhiteSpace(tab.NavigationNotice) ? string.Empty : "   " + tab.NavigationNotice);
         }
 
@@ -3393,7 +3417,7 @@ namespace GXLightBrowser
                 tab.NavigationNotice = string.Empty;
                 if (e.HttpStatusCode == 403 && IsHostOrSubdomain(tab.LastNavigationHost, "crunchyroll.com"))
                 {
-                    tab.NavigationNotice = "Crunchyroll rechazo WebView2 (HTTP 403); no fue bloqueado por Shields.";
+                    tab.NavigationNotice = "Crunchyroll rechazo WebView2 (HTTP 403) con modo compatibilidad activo.";
                     Logger.Info(tab.NavigationNotice);
                 }
                 else if (!e.IsSuccess)

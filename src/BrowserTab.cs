@@ -26,5 +26,8 @@ namespace GXLightBrowser
         public Image Favicon { get; set; }
         public string LastNavigationHost { get; set; }
         public string NavigationNotice { get; set; }
+        public string LastBlockedRequest { get; set; }
+        public bool SiteCompatibilityMode { get; set; }
+        public int BlockedPopups { get; set; }
     }
 }

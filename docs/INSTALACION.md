@@ -2,7 +2,7 @@
 
 ## Opcion recomendada
 
-Usar `GXLightBrowser-Setup-1.9-x64.exe`.
+Usar `GXLightBrowser-Setup-x64.exe` desde la ultima release.
 
 El instalador:
 

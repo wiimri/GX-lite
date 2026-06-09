@@ -1,6 +1,6 @@
 {
   "name": "gxlightbrowser",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "GX Light Browser is a lightweight Windows browser prototype inspired by the workflow of Opera GX and Brave, without copying either product's branding or protected UI.",
   "main": "index.js",
   "directories": {

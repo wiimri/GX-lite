@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.9`
+- Version publicada: `1.10`
 - Fecha: `2026-06-09`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,24 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.10 - Modo de compatibilidad Crunchyroll
+
+Fecha: `2026-06-09`
+
+Cambios:
+
+- Crunchyroll activa automaticamente un modo de compatibilidad que pausa el bloqueo de recursos para ese sitio.
+- El modo de compatibilidad sigue bloqueando ventanas emergentes automáticas.
+- GX Light usa el host de la navegación iniciada para evaluar los primeros recursos, incluso cuando WebView2 todavía reporta `about:blank`.
+- Los recursos bloqueados y popups bloqueados se cuentan por separado.
+- La última URL realmente bloqueada queda visible en la barra de estado y registrada en el log.
+- El instalador también se publica como `GXLightBrowser-Setup-x64.exe`, habilitando un enlace permanente a la última versión.
+
+Pruebas:
+
+- Dos pruebas controladas de Crunchyroll permanecieron abiertas durante 25 segundos sin registrar el `HTTP 403` anterior.
+- La sesión original fue respaldada y restaurada automáticamente después de cada prueba.
 
 ## v1.9 - Instalador con requisitos para Windows y Atlas OS
 

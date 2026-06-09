@@ -43,4 +43,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup fallo con codigo $LASTEXITCODE."
 }
 
+$VersionedInstaller = Get-ChildItem $Dist -Filter "GXLightBrowser-Setup-*-x64.exe" |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+if ($null -ne $VersionedInstaller) {
+    Copy-Item $VersionedInstaller.FullName (Join-Path $Dist "GXLightBrowser-Setup-x64.exe") -Force
+}
+
 Write-Host "Installer created in $Dist"

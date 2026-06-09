@@ -2,18 +2,18 @@ namespace GXLightBrowser
 {
     internal static class VersionInfo
     {
-        public const string CurrentVersion = "1.9";
-        public const string ReleaseName = "GX Light Browser 1.9";
+        public const string CurrentVersion = "1.10";
+        public const string ReleaseName = "GX Light Browser 1.10";
 
         public static string[] Highlights()
         {
             return new string[]
             {
-                "Nuevo instalador para Windows 10/11 x64.",
-                "El instalador comprueba e instala WebView2 Runtime y .NET Framework 4.8.",
-                "Se incluyen siempre las tres bibliotecas WebView2 requeridas junto al navegador.",
-                "GX Light detecta WebView2 ausente y muestra instrucciones de reparacion.",
-                "Se agrego documentacion especial para Atlas OS y sistemas modificados."
+                "Nuevo modo de compatibilidad automatico para Crunchyroll.",
+                "Shields pausa recursos para Crunchyroll sin permitir ventanas emergentes automaticas.",
+                "El host de navegacion se usa desde el primer recurso aunque WebView2 siga en about:blank.",
+                "Los recursos y popups bloqueados ahora se contabilizan por separado.",
+                "Se agrego un enlace permanente al instalador mas reciente."
             };
         }
     }

@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.9`
+Version actual: `1.10`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -45,8 +45,8 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.9`
-- cada mejora o correccion del navegador sube la version menor: `1.10`, `1.11`, ... `1.19`
+- linea de mejora actual: `1.10`
+- cada mejora o correccion del navegador sube la version menor: `1.11`, `1.12`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
@@ -104,13 +104,13 @@ compatibilidad y reparacion en Atlas OS.
 Para publicar el instalador como asset de GitHub Release usando la credencial segura de Git:
 
 ```powershell
-.\scripts\Publish-Release.ps1 -Version 1.9 -Assets .\dist\GXLightBrowser-Setup-1.9-x64.exe,.\dist\GXLightBrowser-Setup-1.9-x64.sha256.txt
+.\scripts\Publish-Release.ps1 -Version 1.10 -Assets .\dist\GXLightBrowser-Setup-1.10-x64.exe,.\dist\GXLightBrowser-Setup-x64.exe
 ```
 
 El instalador publicado puede descargarse desde:
 
 ```text
-https://github.com/wiimri/GX-lite/releases/download/v1.9/GXLightBrowser-Setup-1.9-x64.exe
+https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe
 ```
 
 ## Extensiones
