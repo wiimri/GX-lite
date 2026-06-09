@@ -140,6 +140,30 @@ async function main() {
   await youtubePage.close();
   results.push(youtubeReport);
 
+  const nonYouTubePage = await browser.newPage();
+  const nonYouTubeErrors = [];
+  nonYouTubePage.on("pageerror", (error) => nonYouTubeErrors.push(error.message));
+  await nonYouTubePage.route("https://www.crunchyroll.com/mock-page", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<!doctype html><html><body><main>Crunchyroll compatibility mock</main></body></html>"
+    });
+  });
+  await nonYouTubePage.addInitScript(readYouTubeShieldsScript());
+  await nonYouTubePage.goto("https://www.crunchyroll.com/mock-page");
+  const nonYouTubeReport = await nonYouTubePage.evaluate((errors) => ({
+    name: "non-youtube-isolation",
+    width: window.innerWidth,
+    height: window.innerHeight,
+    failures: [
+      window.__gxLightYouTubeShieldsInstalled ? "YouTube Shields was installed outside YouTube" : null,
+      errors.length ? `page errors: ${errors.join("; ")}` : null
+    ].filter(Boolean)
+  }), nonYouTubeErrors);
+  await nonYouTubePage.close();
+  results.push(nonYouTubeReport);
+
   await browser.close();
 
   const failed = results.filter((result) => result.failures.length > 0);

@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.7`
+- Version publicada: `1.8`
 - Fecha: `2026-06-09`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,23 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.8 - Aislamiento de YouTube Shields y diagnostico de Crunchyroll
+
+Fecha: `2026-06-09`
+
+Cambios:
+
+- YouTube Shields termina inmediatamente fuera de `youtube.com` y `youtu.be`.
+- El `MutationObserver` espera a que exista `document.documentElement`, corrigiendo el error mostrado en DevTools.
+- Se agrego una prueba Playwright que abre una pagina simulada de Crunchyroll y comprueba que YouTube Shields no se instale ni genere errores.
+- La barra de estado identifica cuando Crunchyroll responde `HTTP 403` y aclara que no fue bloqueado por Shields.
+- El diagnostico del rechazo queda registrado en el log local.
+
+Notas:
+
+- La prueba con la sesion real confirmo que Crunchyroll esta respondiendo `HTTP 403` desde el servidor.
+- GX Light no intentara evadir restricciones de acceso o DRM del servicio.
 
 ## v1.7 - Atajos, favicons, Playlist y compatibilidad multimedia
 

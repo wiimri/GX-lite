@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.7`
+Version actual: `1.8`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -45,8 +45,8 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.7`
-- cada mejora o correccion del navegador sube la version menor: `1.8`, `1.9`, ... `1.19`
+- linea de mejora actual: `1.8`
+- cada mejora o correccion del navegador sube la version menor: `1.9`, `1.10`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.

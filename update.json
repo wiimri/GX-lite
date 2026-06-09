@@ -1,14 +1,14 @@
 {
-  "version": "1.7",
-  "releaseName": "GX Light Browser 1.7",
+  "version": "1.8",
+  "releaseName": "GX Light Browser 1.8",
   "publishedAt": "2026-06-09",
   "downloadUrl": "https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "Ctrl+W cierra la pestana activa incluso cuando WebView2 tiene el foco.",
-    "El ejecutable y la ventana ahora tienen un icono propio.",
-    "Menu > Tab appearance permite mostrar favicons y usar pestanas compactas.",
-    "YouTube Shields recupera la reproduccion sin eliminar el contenedor principal del reproductor.",
-    "Se agrego una Playlist local y compatibilidad de recursos multimedia para Crunchyroll."
+    "YouTube Shields ya no se inyecta en Crunchyroll ni en otros sitios.",
+    "El MutationObserver espera a que exista el documento antes de iniciarse.",
+    "Playwright verifica que sitios ajenos a YouTube no reciban el script.",
+    "La barra de estado identifica los HTTP 403 emitidos por Crunchyroll.",
+    "Los rechazos del sitio quedan diferenciados de los bloqueos creados por Shields."
   ]
 }

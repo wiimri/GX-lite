@@ -613,6 +613,19 @@ namespace GXLightBrowser
 
         private void NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
+            CoreWebView2 sourceCore = sender as CoreWebView2;
+            WebView2 sourceWeb = WebViewForCore(sourceCore);
+            TabPage sourcePage = sourceWeb == null ? null : PageForWebView(sourceWeb);
+            BrowserTab sourceTab = sourcePage == null ? null : sourcePage.Tag as BrowserTab;
+            Uri startingUri;
+            if (sourceTab != null)
+            {
+                sourceTab.NavigationNotice = string.Empty;
+                sourceTab.LastNavigationHost = Uri.TryCreate(e.Uri, UriKind.Absolute, out startingUri)
+                    ? startingUri.Host.ToLowerInvariant()
+                    : string.Empty;
+            }
+
             if (_privacyFirewallEnabled)
             {
                 string clean = _privacyFirewall.StripTrackingParameters(e.Uri);
@@ -2546,7 +2559,8 @@ namespace GXLightBrowser
                 "   reglas: " + _adBlocker.RuleCount +
                 "   firewall: " + (_privacyFirewallEnabled ? "activo" : "pausado") +
                 "   reglas firewall: " + _privacyFirewall.RuleCount +
-                "   bloqueadas en pestana: " + blocked;
+                "   bloqueadas en pestana: " + blocked +
+                (tab == null || string.IsNullOrWhiteSpace(tab.NavigationNotice) ? string.Empty : "   " + tab.NavigationNotice);
         }
 
         private void ApplyResponsiveMode()
@@ -2780,6 +2794,8 @@ namespace GXLightBrowser
         private static string YouTubeShieldsScript()
         {
             return @"(() => {
+  const isYouTube = /(\.|^)youtube\.com$/.test(location.hostname) || location.hostname === 'youtu.be';
+  if (!isYouTube) return;
   if (window.__gxLightYouTubeShieldsInstalled) return;
   window.__gxLightYouTubeShieldsInstalled = true;
 
@@ -2847,7 +2863,6 @@ namespace GXLightBrowser
   }
 
   function run() {
-    if (!/(\.|^)youtube\.com$/.test(location.hostname) && location.hostname !== 'youtu.be') return;
     clickSkips();
     removeAdNodes();
     recoverVideoPlayback();
@@ -2856,7 +2871,12 @@ namespace GXLightBrowser
   window.__gxLightRunYouTubeShields = run;
   run();
   setInterval(run, 350);
-  new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+  const observe = () => {
+    if (!document.documentElement) return;
+    new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+  };
+  if (document.documentElement) observe();
+  else document.addEventListener('DOMContentLoaded', observe, { once: true });
 })();";
         }
 
@@ -3345,6 +3365,21 @@ namespace GXLightBrowser
             if (web == null) return;
             TabPage page = PageForWebView(web);
             if (page == null) return;
+            BrowserTab tab = page.Tag as BrowserTab;
+
+            if (tab != null)
+            {
+                tab.NavigationNotice = string.Empty;
+                if (e.HttpStatusCode == 403 && IsHostOrSubdomain(tab.LastNavigationHost, "crunchyroll.com"))
+                {
+                    tab.NavigationNotice = "Crunchyroll rechazo WebView2 (HTTP 403); no fue bloqueado por Shields.";
+                    Logger.Info(tab.NavigationNotice);
+                }
+                else if (!e.IsSuccess)
+                {
+                    tab.NavigationNotice = "Error de navegacion: " + e.WebErrorStatus;
+                }
+            }
 
             if (web.Source != null && IsYouTubeHost(web.Source.Host))
             {

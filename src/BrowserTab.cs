@@ -24,5 +24,7 @@ namespace GXLightBrowser
         public bool IsSuspended { get; set; }
         public System.DateTime LastActiveUtc { get; set; }
         public Image Favicon { get; set; }
+        public string LastNavigationHost { get; set; }
+        public string NavigationNotice { get; set; }
     }
 }
