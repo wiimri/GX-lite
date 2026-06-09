@@ -101,6 +101,12 @@ Para construirlo:
 El resultado queda en `dist\`. Consultar [docs/INSTALACION.md](docs/INSTALACION.md) para detalles de
 compatibilidad y reparacion en Atlas OS.
 
+Para publicar el instalador como asset de GitHub Release usando la credencial segura de Git:
+
+```powershell
+.\scripts\Publish-Release.ps1 -Version 1.9 -Assets .\dist\GXLightBrowser-Setup-1.9-x64.exe,.\dist\GXLightBrowser-Setup-1.9-x64.sha256.txt
+```
+
 El instalador publicado puede descargarse desde:
 
 ```text
