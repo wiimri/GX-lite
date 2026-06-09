@@ -4,8 +4,8 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.6`
-- Fecha: `2026-06-08`
+- Version publicada: `1.7`
+- Fecha: `2026-06-09`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
 
@@ -20,6 +20,25 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.7 - Atajos, favicons, Playlist y compatibilidad multimedia
+
+Fecha: `2026-06-09`
+
+Cambios:
+
+- `Ctrl+W` se procesa a nivel del formulario aunque una pagina WebView2 tenga el foco.
+- El ejecutable y la ventana incorporan un icono propio de GX Light.
+- WebView2 entrega los favicons de cada pagina a la barra de pestanas.
+- `Menu > Tab appearance` permite mostrar u ocultar favicons y activar pestanas compactas cuadradas.
+- YouTube Shields ya no elimina el contenedor principal de anuncios ni fuerza saltos de tiempo agresivos; intenta mantener y recuperar la reproduccion.
+- Las solicitudes multimedia necesarias de YouTube y Crunchyroll tienen excepciones de compatibilidad limitadas al sitio activo.
+- Se agrego una Playlist local para guardar, abrir y eliminar paginas multimedia.
+
+Notas:
+
+- La Playlist guarda enlaces; no descarga ni evita contenido protegido por DRM.
+- Crunchyroll puede seguir rechazando sesiones por reglas propias del servicio o limitaciones DRM de WebView2.
 
 ## v1.6 - Correccion de eliminacion de bookmarks y carpetas importadas
 

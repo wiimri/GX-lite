@@ -177,6 +177,13 @@ namespace GXLightBrowser
                     IsHostOrSubdomain(host, "youtubei.googleapis.com");
             }
 
+            if (IsHostOrSubdomain(documentHost, "crunchyroll.com"))
+            {
+                return IsHostOrSubdomain(host, "crunchyroll.com") ||
+                    IsHostOrSubdomain(host, "crunchyrollcdn.com") ||
+                    IsHostOrSubdomain(host, "vrv.co");
+            }
+
             return false;
         }
 

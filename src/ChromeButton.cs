@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -25,6 +26,8 @@ namespace GXLightBrowser
         public bool ShowCloseGlyph { get; set; }
         public bool ShowIslandStripe { get; set; }
         public Color IslandColor { get; set; }
+        public Image IconImage { get; set; }
+        public bool IconOnly { get; set; }
 
         public bool IsCloseHit(Point point)
         {
@@ -73,15 +76,28 @@ namespace GXLightBrowser
                 }
             }
 
+            int contentLeft = rect.Left + (ShowIslandStripe ? 16 : 8);
+            if (IconImage != null)
+            {
+                int iconSize = Math.Min(16, rect.Height - 8);
+                int iconLeft = IconOnly ? rect.Left + (rect.Width - iconSize) / 2 : contentLeft;
+                int iconTop = rect.Top + (rect.Height - iconSize) / 2;
+                pevent.Graphics.DrawImage(IconImage, new Rectangle(iconLeft, iconTop, iconSize, iconSize));
+                contentLeft += iconSize + 6;
+            }
+
             Rectangle textRect = ShowCloseGlyph
-                ? new Rectangle(rect.Left + (ShowIslandStripe ? 16 : 8), rect.Top, rect.Width - (ShowIslandStripe ? 38 : 30), rect.Height)
-                : rect;
+                ? new Rectangle(contentLeft, rect.Top, Math.Max(0, rect.Right - contentLeft - 27), rect.Height)
+                : new Rectangle(contentLeft, rect.Top, Math.Max(0, rect.Right - contentLeft - 7), rect.Height);
 
             TextFormatFlags flags = (ShowCloseGlyph ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter) |
                 TextFormatFlags.VerticalCenter |
                 TextFormatFlags.EndEllipsis |
                 TextFormatFlags.NoPadding;
-            TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, flags);
+            if (!IconOnly)
+            {
+                TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, flags);
+            }
 
             if (ShowCloseGlyph)
             {

@@ -46,6 +46,7 @@ namespace GXLightBrowser
         private readonly List<DownloadEntry> _downloads = new List<DownloadEntry>();
         private readonly List<BookmarkEntry> _bookmarks = new List<BookmarkEntry>();
         private readonly List<PasswordVaultEntry> _passwordVault = new List<PasswordVaultEntry>();
+        private readonly List<PlaylistEntry> _playlist = new List<PlaylistEntry>();
         private readonly Dictionary<int, Color> _islandColors = new Dictionary<int, Color>();
         private readonly GxControlSettings _gxControl = new GxControlSettings();
         private AppSettings _appSettings = new AppSettings();
@@ -69,6 +70,7 @@ namespace GXLightBrowser
             Font = new Font("Segoe UI", 9f);
             DoubleBuffered = true;
             KeyPreview = true;
+            try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             BuildLayout();
             SizeChanged += delegate { ApplyResponsiveMode(); };
@@ -372,6 +374,52 @@ namespace GXLightBrowser
             };
         }
 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (HandleBrowserShortcut(keyData))
+            {
+                return true;
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private bool HandleBrowserShortcut(Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.W))
+            {
+                CloseTab(_tabs.SelectedTab);
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.T))
+            {
+                Task ignored = CreateTabAsync(HomeUrl);
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.L))
+            {
+                _address.Focus();
+                _address.SelectAll();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.J))
+            {
+                NavigateInternal("downloads");
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.H))
+            {
+                NavigateInternal("history");
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.D))
+            {
+                AddCurrentBookmark();
+                return true;
+            }
+            return false;
+        }
+
         private async Task InitializeAsync()
         {
             AppPaths.Ensure();
@@ -395,6 +443,7 @@ namespace GXLightBrowser
 
             LoadBookmarks();
             LoadPasswordVault();
+            LoadPlaylist();
             RebuildBookmarksBar();
             EnsureDefaultFilters();
             _adBlocker.Load(AppPaths.Filters);
@@ -528,6 +577,7 @@ namespace GXLightBrowser
             web.CoreWebView2.NavigationStarting += NavigationStarting;
             web.CoreWebView2.NavigationCompleted += NavigationCompletedHandler;
             web.CoreWebView2.DocumentTitleChanged += DocumentTitleChangedHandler;
+            web.CoreWebView2.FaviconChanged += FaviconChangedHandler;
             web.CoreWebView2.ProcessFailed += Web_ProcessFailed;
         }
 
@@ -757,6 +807,26 @@ namespace GXLightBrowser
                 NavigateInternal("bookmarks");
                 return;
             }
+
+            const string playlistOpenPrefix = "gxlight:playlist:open:";
+            if (message.StartsWith(playlistOpenPrefix, StringComparison.Ordinal))
+            {
+                NavigateActive(Base64Decode(message.Substring(playlistOpenPrefix.Length)));
+                return;
+            }
+
+            const string playlistDeletePrefix = "gxlight:playlist:delete:";
+            if (message.StartsWith(playlistDeletePrefix, StringComparison.Ordinal))
+            {
+                string url = Base64Decode(message.Substring(playlistDeletePrefix.Length));
+                _playlist.RemoveAll(delegate(PlaylistEntry item)
+                {
+                    return string.Equals(item.Url, url, StringComparison.OrdinalIgnoreCase);
+                });
+                SavePlaylist();
+                NavigateInternal("playlist");
+                return;
+            }
         }
 
         private bool IsTrustedInternalMessageSource(CoreWebView2 core, string source)
@@ -792,11 +862,17 @@ namespace GXLightBrowser
                 return;
             }
 
-            WebView2 active = ActiveWebView();
+            CoreWebView2 core = sender as CoreWebView2;
+            WebView2 active = WebViewForCore(core) ?? ActiveWebView();
             Uri documentUri = null;
             if (active != null && active.Source != null)
             {
                 documentUri = active.Source;
+            }
+
+            if (IsMediaCompatibilityRequest(e.ResourceContext, requestUri, documentUri))
+            {
+                return;
             }
 
             bool shouldBlock = _adBlocker.ShouldBlock(requestUri, documentUri);
@@ -810,7 +886,8 @@ namespace GXLightBrowser
                 return;
             }
 
-            BrowserTab tab = ActiveTab();
+            TabPage requestPage = active == null ? null : PageForWebView(active);
+            BrowserTab tab = requestPage == null ? ActiveTab() : requestPage.Tag as BrowserTab;
             if (tab != null)
             {
                 tab.BlockedRequests++;
@@ -822,6 +899,46 @@ namespace GXLightBrowser
                 "Blocked",
                 "Content-Type: text/plain");
             UpdateStatus();
+        }
+
+        private static bool IsMediaCompatibilityRequest(CoreWebView2WebResourceContext context, Uri requestUri, Uri documentUri)
+        {
+            if (requestUri == null || documentUri == null)
+            {
+                return false;
+            }
+
+            bool mediaContext = context == CoreWebView2WebResourceContext.Media ||
+                context == CoreWebView2WebResourceContext.XmlHttpRequest ||
+                context == CoreWebView2WebResourceContext.Fetch;
+            if (!mediaContext)
+            {
+                return false;
+            }
+
+            string documentHost = documentUri.Host.ToLowerInvariant();
+            string requestHost = requestUri.Host.ToLowerInvariant();
+            if (IsYouTubeHost(documentHost))
+            {
+                return requestHost.EndsWith("googlevideo.com", StringComparison.Ordinal) ||
+                    requestHost.EndsWith("youtube.com", StringComparison.Ordinal) ||
+                    requestHost.EndsWith("youtubei.googleapis.com", StringComparison.Ordinal);
+            }
+
+            if (IsHostOrSubdomain(documentHost, "crunchyroll.com"))
+            {
+                return IsHostOrSubdomain(requestHost, "crunchyroll.com") ||
+                    IsHostOrSubdomain(requestHost, "crunchyrollcdn.com") ||
+                    IsHostOrSubdomain(requestHost, "vrv.co");
+            }
+
+            return false;
+        }
+
+        private static bool IsHostOrSubdomain(string host, string domain)
+        {
+            return !string.IsNullOrEmpty(host) &&
+                (host == domain || host.EndsWith("." + domain, StringComparison.Ordinal));
         }
 
         private void DownloadStarting(object sender, CoreWebView2DownloadStartingEventArgs e)
@@ -985,6 +1102,7 @@ namespace GXLightBrowser
                 case "downloads": return "Downloads";
                 case "passwords": return "Passwords";
                 case "bookmarks": return "Bookmarks";
+                case "playlist": return "Playlist";
                 case "memory": return "Memory";
                 case "shields": return "Shields";
                 case "settings": return "Settings";
@@ -1024,6 +1142,10 @@ namespace GXLightBrowser
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("History                                     Ctrl+H", null, delegate { NavigateInternal("history"); });
             menu.Items.Add("Downloads                                   Ctrl+J", null, delegate { NavigateInternal("downloads"); });
+            ToolStripMenuItem playlist = new ToolStripMenuItem("Playlist");
+            playlist.DropDownItems.Add("Add current page", null, delegate { AddCurrentToPlaylist(); });
+            playlist.DropDownItems.Add("Open Playlist", null, delegate { NavigateInternal("playlist"); });
+            menu.Items.Add(playlist);
             ToolStripMenuItem bookmarks = new ToolStripMenuItem("Bookmarks");
             bookmarks.DropDownItems.Add("Add current page                            Ctrl+D", null, delegate { AddCurrentBookmark(); });
             bookmarks.DropDownItems.Add("Manage bookmarks", null, delegate { NavigateInternal("bookmarks"); });
@@ -1043,6 +1165,34 @@ namespace GXLightBrowser
             menu.Items.Add("GX Control / limiters", null, delegate { ShowGxControl(); });
             menu.Items.Add("Memory monitor", null, delegate { NavigateInternal("memory"); });
             menu.Items.Add("Shields / Privacy Firewall", null, delegate { NavigateInternal("shields"); });
+            ToolStripMenuItem appearance = new ToolStripMenuItem("Tab appearance");
+            ToolStripMenuItem showIcons = new ToolStripMenuItem("Ver iconos de las paginas");
+            showIcons.Checked = _appSettings.ShowPageIcons;
+            showIcons.Click += delegate
+            {
+                _appSettings.ShowPageIcons = !_appSettings.ShowPageIcons;
+                if (!_appSettings.ShowPageIcons)
+                {
+                    _appSettings.CompactIconTabs = false;
+                }
+                _appSettings.Save();
+                RebuildTabStrip();
+            };
+            ToolStripMenuItem compactTabs = new ToolStripMenuItem("Pestanas compactas con iconos");
+            compactTabs.Checked = _appSettings.CompactIconTabs;
+            compactTabs.Click += delegate
+            {
+                _appSettings.CompactIconTabs = !_appSettings.CompactIconTabs;
+                if (_appSettings.CompactIconTabs)
+                {
+                    _appSettings.ShowPageIcons = true;
+                }
+                _appSettings.Save();
+                RebuildTabStrip();
+            };
+            appearance.DropDownItems.Add(showIcons);
+            appearance.DropDownItems.Add(compactTabs);
+            menu.Items.Add(appearance);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
             menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
@@ -1234,6 +1384,65 @@ namespace GXLightBrowser
                     .Append(entry.CreatedUtc.Ticks).AppendLine();
             }
             File.WriteAllText(AppPaths.Bookmarks, builder.ToString(), Encoding.UTF8);
+        }
+
+        private void LoadPlaylist()
+        {
+            _playlist.Clear();
+            if (!File.Exists(AppPaths.Playlist))
+            {
+                return;
+            }
+
+            foreach (string line in File.ReadAllLines(AppPaths.Playlist, Encoding.UTF8))
+            {
+                string[] parts = line.Split('\t');
+                if (parts.Length < 2) continue;
+                PlaylistEntry item = new PlaylistEntry();
+                item.Title = DecodeField(parts[0]);
+                item.Url = DecodeField(parts[1]);
+                item.AddedUtc = parts.Length > 2
+                    ? new DateTime(ParseLong(parts[2], DateTime.UtcNow.Ticks), DateTimeKind.Utc)
+                    : DateTime.UtcNow;
+                _playlist.Add(item);
+            }
+        }
+
+        private void SavePlaylist()
+        {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < _playlist.Count; i++)
+            {
+                builder.Append(EncodeField(_playlist[i].Title)).Append('\t')
+                    .Append(EncodeField(_playlist[i].Url)).Append('\t')
+                    .Append(_playlist[i].AddedUtc.Ticks).AppendLine();
+            }
+            File.WriteAllText(AppPaths.Playlist, builder.ToString(), Encoding.UTF8);
+        }
+
+        private void AddCurrentToPlaylist()
+        {
+            BrowserTab tab = ActiveTab();
+            string url = GetTabUrl(tab);
+            if (tab == null || string.IsNullOrWhiteSpace(url) || url.StartsWith("gxlight://", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(this, "Abre un video o pagina multimedia antes de agregarla.", "Playlist");
+                return;
+            }
+
+            if (_playlist.Exists(delegate(PlaylistEntry item) { return string.Equals(item.Url, url, StringComparison.OrdinalIgnoreCase); }))
+            {
+                MessageBox.Show(this, "Esta pagina ya esta en la Playlist.", "Playlist");
+                return;
+            }
+
+            PlaylistEntry entry = new PlaylistEntry();
+            entry.Title = GetTabTitle(tab);
+            entry.Url = url;
+            entry.AddedUtc = DateTime.UtcNow;
+            _playlist.Insert(0, entry);
+            SavePlaylist();
+            NavigateInternal("playlist");
         }
 
         private void ShowFolderDropdownMenu(string folderName, Control owner)
@@ -1790,7 +1999,9 @@ namespace GXLightBrowser
                 tab.Height = 28;
                 tab.Margin = new Padding(0, 1, 6, 3);
                 tab.IsSelected = page == _tabs.SelectedTab;
-                tab.ShowCloseGlyph = true;
+                tab.ShowCloseGlyph = !_appSettings.CompactIconTabs;
+                tab.IconImage = _appSettings.ShowPageIcons && browserTab != null ? browserTab.Favicon : null;
+                tab.IconOnly = _appSettings.CompactIconTabs;
                 if (browserTab != null && browserTab.IsSelectedForIsland)
                 {
                     tab.Accent = Theme.Warning;
@@ -2039,6 +2250,11 @@ namespace GXLightBrowser
                 UnsubscribeWebViewEvents(tab.WebView);
                 tab.WebView.Dispose();
             }
+            if (tab != null && tab.Favicon != null)
+            {
+                tab.Favicon.Dispose();
+                tab.Favicon = null;
+            }
             page.Dispose();
 
             if (_tabs.TabPages.Count > 0)
@@ -2254,6 +2470,11 @@ namespace GXLightBrowser
 
         private int CalculateTabWidth()
         {
+            if (_appSettings.CompactIconTabs)
+            {
+                return 38;
+            }
+
             int available = Math.Max(260, _tabStrip.Width - 12);
             int count = Math.Max(1, _tabs.TabPages.Count);
             int width = (available / count) - 8;
@@ -2574,7 +2795,6 @@ namespace GXLightBrowser
     '.ytp-ad-overlay-container',
     '.ytp-ad-player-overlay',
     '.ytp-ad-image-overlay',
-    '.video-ads',
     '#player-ads',
     '#masthead-ad'
   ];
@@ -2606,25 +2826,31 @@ namespace GXLightBrowser
     }
   }
 
-  function accelerateVideoAds() {
+  let wasInAd = false;
+  function recoverVideoPlayback() {
     const player = document.querySelector('.html5-video-player');
-    if (!player || !player.classList.contains('ad-showing')) return;
+    if (!player) return;
+    const inAd = player.classList.contains('ad-showing');
     document.querySelectorAll('video').forEach((video) => {
       try {
-        video.muted = true;
-        video.playbackRate = 16;
-        if (Number.isFinite(video.duration) && video.duration > 0 && video.currentTime < video.duration - 0.35) {
-          video.currentTime = Math.max(video.currentTime, video.duration - 0.25);
+        if (inAd) {
+          video.muted = true;
+          video.playbackRate = 8;
+          if (video.paused) video.play().catch(() => {});
+        } else if (wasInAd) {
+          video.playbackRate = 1;
+          if (video.paused) video.play().catch(() => {});
         }
       } catch (_) {}
     });
+    wasInAd = inAd;
   }
 
   function run() {
     if (!/(\.|^)youtube\.com$/.test(location.hostname) && location.hostname !== 'youtu.be') return;
     clickSkips();
     removeAdNodes();
-    accelerateVideoAds();
+    recoverVideoPlayback();
   }
 
   window.__gxLightRunYouTubeShields = run;
@@ -2646,6 +2872,8 @@ namespace GXLightBrowser
                     return HtmlShell("Passwords and autofill", PasswordsHtml());
                 case "bookmarks":
                     return BookmarksHtml();
+                case "playlist":
+                    return HtmlShell("Playlist", PlaylistHtml());
                 case "memory":
                     return HtmlShell("Memory monitor",
                         "<p>Estimated browser memory: <b>" + EstimateBrowserMemoryMb() + " MB</b></p>" +
@@ -2699,6 +2927,32 @@ namespace GXLightBrowser
             }
 
             return HtmlShell("Extensions", body.ToString());
+        }
+
+        private string PlaylistHtml()
+        {
+            StringBuilder body = new StringBuilder();
+            body.Append("<p>Guarda videos y paginas multimedia para volver a abrirlos rapidamente. La Playlist no copia ni evita contenido protegido por DRM.</p>");
+            if (_playlist.Count == 0)
+            {
+                body.Append("<p>No hay elementos guardados. Usa Menu &gt; Playlist &gt; Add current page.</p>");
+                return body.ToString();
+            }
+
+            body.Append("<table><tr><th>Titulo</th><th>Agregado</th><th>Acciones</th></tr>");
+            for (int i = 0; i < _playlist.Count; i++)
+            {
+                PlaylistEntry item = _playlist[i];
+                string encodedUrl = Convert.ToBase64String(Encoding.UTF8.GetBytes(item.Url ?? string.Empty));
+                body.Append("<tr><td><b>").Append(EscapeHtml(item.Title)).Append("</b><br><span>")
+                    .Append(EscapeHtml(item.Url)).Append("</span></td><td>")
+                    .Append(item.AddedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td><td>")
+                    .Append("<button onclick=\"chrome.webview.postMessage('gxlight:playlist:open:").Append(encodedUrl).Append("')\">Abrir</button> ")
+                    .Append("<button onclick=\"chrome.webview.postMessage('gxlight:playlist:delete:").Append(encodedUrl).Append("')\">Eliminar</button>")
+                    .Append("</td></tr>");
+            }
+            body.Append("</table>");
+            return body.ToString();
         }
 
         private string HistoryHtml()
@@ -3115,6 +3369,33 @@ namespace GXLightBrowser
             RebuildTabStrip();
         }
 
+        private async void FaviconChangedHandler(object sender, object e)
+        {
+            CoreWebView2 core = sender as CoreWebView2;
+            WebView2 web = WebViewForCore(core);
+            TabPage page = web == null ? null : PageForWebView(web);
+            BrowserTab tab = page == null ? null : page.Tag as BrowserTab;
+            if (core == null || tab == null)
+            {
+                return;
+            }
+
+            try
+            {
+                using (Stream stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
+                using (Image image = Image.FromStream(stream))
+                {
+                    Image previous = tab.Favicon;
+                    tab.Favicon = new Bitmap(image);
+                    if (previous != null) previous.Dispose();
+                }
+                RebuildTabStrip();
+            }
+            catch
+            {
+            }
+        }
+
         private TabPage PageForWebView(WebView2 web)
         {
             for (int i = 0; i < _tabs.TabPages.Count; i++)
@@ -3142,6 +3423,7 @@ namespace GXLightBrowser
                     web.CoreWebView2.NavigationStarting -= NavigationStarting;
                     web.CoreWebView2.NavigationCompleted -= NavigationCompletedHandler;
                     web.CoreWebView2.DocumentTitleChanged -= DocumentTitleChangedHandler;
+                    web.CoreWebView2.FaviconChanged -= FaviconChangedHandler;
                     web.CoreWebView2.WebMessageReceived -= WebMessageReceived;
                 }
             }

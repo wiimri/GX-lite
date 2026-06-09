@@ -9,6 +9,8 @@ internal static class PrivacyFirewallProbe
         Uri document = new Uri("https://example.com/article");
         Uri tracker = new Uri("https://www.google-analytics.com/collect?v=1");
         Uri firstParty = new Uri("https://example.com/assets/app.js");
+        Uri crunchyrollDocument = new Uri("https://www.crunchyroll.com/es/series/example");
+        Uri crunchyrollMedia = new Uri("https://static.crunchyrollcdn.com/media/segment.m4s");
 
         if (!firewall.ShouldBlock(tracker, document))
         {
@@ -19,6 +21,12 @@ internal static class PrivacyFirewallProbe
         if (firewall.ShouldBlock(firstParty, document))
         {
             Console.Error.WriteLine("Expected first-party asset request to be allowed.");
+            return 1;
+        }
+
+        if (firewall.ShouldBlock(crunchyrollMedia, crunchyrollDocument))
+        {
+            Console.Error.WriteLine("Expected required Crunchyroll media request to be allowed.");
             return 1;
         }
 

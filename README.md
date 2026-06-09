@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.6`
+Version actual: `1.7`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -36,14 +36,17 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Importacion/exportacion de bookmarks en HTML compatible con navegadores.
 - Gestor de bookmarks con carpetas, busqueda, seleccion multiple y eliminacion masiva.
 - Importacion/exportacion de passwords CSV mediante una boveda local protegida con Windows DPAPI.
+- Favicons por pagina y modo opcional de pestanas compactas cuadradas.
+- Playlist local para guardar, volver a abrir y eliminar paginas multimedia.
+- Icono propio integrado en la ventana y el ejecutable.
 
 ## Versionado
 
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.6`
-- cada mejora o correccion del navegador sube la version menor: `1.7`, `1.8`, ... `1.19`
+- linea de mejora actual: `1.7`
+- cada mejora o correccion del navegador sube la version menor: `1.8`, `1.9`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
@@ -155,7 +158,7 @@ Actualmente:
 - bloquea dominios conocidos de trackers, analytics, pixels, RUM, ad-tech y attribution
 - bloquea requests de terceros que parecen telemetria, beacons, pixels o endpoints de tracking
 - limpia parametros de seguimiento como `utm_*`, `fbclid`, `gclid`, `msclkid`, `mc_cid` y similares durante la navegacion
-- mantiene excepciones de compatibilidad para recursos necesarios de reproduccion de YouTube
+- mantiene excepciones de compatibilidad para recursos necesarios de reproduccion de YouTube y Crunchyroll
 
 Esto no oculta tu IP ni reemplaza un bloqueador nativo completo como `adblock-rust`. Su objetivo es reducir superficies de seguimiento dentro del navegador.
 

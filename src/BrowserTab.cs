@@ -1,4 +1,5 @@
 using Microsoft.Web.WebView2.WinForms;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace GXLightBrowser
@@ -22,5 +23,6 @@ namespace GXLightBrowser
         public string SuspendedTitle { get; set; }
         public bool IsSuspended { get; set; }
         public System.DateTime LastActiveUtc { get; set; }
+        public Image Favicon { get; set; }
     }
 }

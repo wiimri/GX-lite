@@ -25,6 +25,8 @@ namespace GXLightBrowser
         // Low Resource Mode properties
         public bool LowResourcesModeEnabled { get; set; }
         public int MaxActiveTabs { get; set; }
+        public bool ShowPageIcons { get; set; }
+        public bool CompactIconTabs { get; set; }
 
         public AppSettings()
         {
@@ -45,6 +47,8 @@ namespace GXLightBrowser
             
             LowResourcesModeEnabled = false;
             MaxActiveTabs = 5;
+            ShowPageIcons = true;
+            CompactIconTabs = false;
         }
 
         public static AppSettings Load()
@@ -96,6 +100,10 @@ namespace GXLightBrowser
                         settings.LowResourcesModeEnabled = bool.Parse(value);
                     else if (string.Equals(key, "MaxActiveTabs", StringComparison.OrdinalIgnoreCase))
                         settings.MaxActiveTabs = int.Parse(value);
+                    else if (string.Equals(key, "ShowPageIcons", StringComparison.OrdinalIgnoreCase))
+                        settings.ShowPageIcons = bool.Parse(value);
+                    else if (string.Equals(key, "CompactIconTabs", StringComparison.OrdinalIgnoreCase))
+                        settings.CompactIconTabs = bool.Parse(value);
                 }
             }
             catch (Exception ex)
@@ -127,6 +135,8 @@ namespace GXLightBrowser
                 builder.Append("NetworkProfile=").Append(NetworkProfile ?? "25 MB/s - 200 Mbps").AppendLine();
                 builder.Append("LowResourcesModeEnabled=").Append(LowResourcesModeEnabled).AppendLine();
                 builder.Append("MaxActiveTabs=").Append(MaxActiveTabs).AppendLine();
+                builder.Append("ShowPageIcons=").Append(ShowPageIcons).AppendLine();
+                builder.Append("CompactIconTabs=").Append(CompactIconTabs).AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }

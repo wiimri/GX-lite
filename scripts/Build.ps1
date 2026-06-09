@@ -43,9 +43,15 @@ Copy-Item $Loader $Bin -Force
 
 $Sources = Get-ChildItem (Join-Path $Root "src") -Filter "*.cs" | ForEach-Object { $_.FullName }
 $Output = Join-Path $Bin "GXLightBrowser.exe"
+$Icon = Join-Path $Root "assets\GXLight.ico"
+
+if (!(Test-Path $Icon)) {
+    & (Join-Path $PSScriptRoot "Generate-Icon.ps1") -OutputPath $Icon
+}
 
 & $Csc /nologo /target:winexe /platform:x64 /optimize+ `
     /out:$Output `
+    /win32icon:$Icon `
     /reference:System.dll `
     /reference:System.Core.dll `
     /reference:System.Drawing.dll `
