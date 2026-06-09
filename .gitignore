@@ -1,4 +1,6 @@
 bin/
+dist/
+prerequisites/
 packages/
 node_modules/
 .npm-cache/

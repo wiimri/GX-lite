@@ -2,18 +2,18 @@ namespace GXLightBrowser
 {
     internal static class VersionInfo
     {
-        public const string CurrentVersion = "1.8";
-        public const string ReleaseName = "GX Light Browser 1.8";
+        public const string CurrentVersion = "1.9";
+        public const string ReleaseName = "GX Light Browser 1.9";
 
         public static string[] Highlights()
         {
             return new string[]
             {
-                "YouTube Shields ya no se inyecta en Crunchyroll ni en otros sitios.",
-                "El MutationObserver espera a que exista el documento antes de iniciarse.",
-                "Se agrego una prueba Playwright para verificar aislamiento fuera de YouTube.",
-                "Los rechazos HTTP 403 de Crunchyroll se identifican como respuesta del sitio.",
-                "La barra de estado diferencia esos rechazos de los bloqueos creados por Shields."
+                "Nuevo instalador para Windows 10/11 x64.",
+                "El instalador comprueba e instala WebView2 Runtime y .NET Framework 4.8.",
+                "Se incluyen siempre las tres bibliotecas WebView2 requeridas junto al navegador.",
+                "GX Light detecta WebView2 ausente y muestra instrucciones de reparacion.",
+                "Se agrego documentacion especial para Atlas OS y sistemas modificados."
             };
         }
     }

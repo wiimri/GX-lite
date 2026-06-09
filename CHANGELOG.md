@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.8`
+- Version publicada: `1.9`
 - Fecha: `2026-06-09`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,25 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.9 - Instalador con requisitos para Windows y Atlas OS
+
+Fecha: `2026-06-09`
+
+Cambios:
+
+- Nuevo instalador x64 construido con Inno Setup.
+- El instalador copia el ejecutable y las tres bibliotecas requeridas por WebView2.
+- Se detecta e instala Microsoft Edge WebView2 Evergreen Runtime cuando falta.
+- Se detecta e instala Microsoft .NET Framework 4.8 cuando falta.
+- GX Light comprueba WebView2 antes de crear pestañas y muestra instrucciones de reparación si no esta disponible.
+- Nueva guia `docs/INSTALACION.md` para Windows y Atlas OS.
+
+Notas:
+
+- El instalador usa los bootstrapper oficiales de Microsoft.
+- Atlas OS puede impedir la instalación si fueron deshabilitados servicios esenciales de Microsoft.
+- La distribución actual requiere Windows 10/11 x64.
 
 ## v1.8 - Aislamiento de YouTube Shields y diagnostico de Crunchyroll
 

@@ -423,6 +423,16 @@ namespace GXLightBrowser
         private async Task InitializeAsync()
         {
             AppPaths.Ensure();
+            string webView2Version;
+            if (!RuntimePrerequisites.TryGetWebView2Version(out webView2Version))
+            {
+                Logger.Error("WebView2 Runtime is missing or unavailable.");
+                MessageBox.Show(this, RuntimePrerequisites.MissingWebView2Message(), "Falta WebView2 Runtime",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Close();
+                return;
+            }
+            Logger.Info("Using WebView2 Runtime " + webView2Version);
             _appSettings = AppSettings.Load();
 
             // Cargar preferencias del usuario
@@ -451,7 +461,18 @@ namespace GXLightBrowser
             CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions();
             options.AreBrowserExtensionsEnabled = true;
             options.AdditionalBrowserArguments = "--disable-features=HeavyAdPrivacyMitigations";
-            _environment = await CoreWebView2Environment.CreateAsync(null, AppPaths.Profile, options);
+            try
+            {
+                _environment = await CoreWebView2Environment.CreateAsync(null, AppPaths.Profile, options);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Could not initialize WebView2 Runtime: " + ex.Message);
+                MessageBox.Show(this, RuntimePrerequisites.MissingWebView2Message() + "\n\nDetalle: " + ex.Message,
+                    "No se pudo iniciar WebView2", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Close();
+                return;
+            }
 
             // Restaurar sesión previa si existe
             SessionData session = SessionManager.LoadSession();

@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.8`
+Version actual: `1.9`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -45,8 +45,8 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.8`
-- cada mejora o correccion del navegador sube la version menor: `1.9`, `1.10`, ... `1.19`
+- linea de mejora actual: `1.9`
+- cada mejora o correccion del navegador sube la version menor: `1.10`, `1.11`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
@@ -80,6 +80,32 @@ cd C:\Users\arias\Documents\DEV\GXLightBrowser
 ```
 
 El script de build descarga el paquete oficial `Microsoft.Web.WebView2` desde NuGet, compila con el compilador de .NET Framework incluido en Windows y genera `bin\GXLightBrowser.exe`.
+
+## Instalador
+
+Desde la version `1.9`, GX Light cuenta con un instalador para Windows 10/11 x64. El instalador copia el
+navegador completo y comprueba los requisitos que sistemas modificados como Atlas OS pueden eliminar:
+
+- Microsoft Edge WebView2 Evergreen Runtime.
+- Microsoft .NET Framework 4.8.
+- `Microsoft.Web.WebView2.Core.dll`.
+- `Microsoft.Web.WebView2.WinForms.dll`.
+- `WebView2Loader.dll`.
+
+Para construirlo:
+
+```powershell
+.\scripts\Build-Installer.ps1
+```
+
+El resultado queda en `dist\`. Consultar [docs/INSTALACION.md](docs/INSTALACION.md) para detalles de
+compatibilidad y reparacion en Atlas OS.
+
+El instalador publicado puede descargarse desde:
+
+```text
+https://github.com/wiimri/GX-lite/releases/download/v1.9/GXLightBrowser-Setup-1.9-x64.exe
+```
 
 ## Extensiones
 

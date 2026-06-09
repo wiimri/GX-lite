@@ -1,14 +1,14 @@
 {
-  "version": "1.8",
-  "releaseName": "GX Light Browser 1.8",
+  "version": "1.9",
+  "releaseName": "GX Light Browser 1.9",
   "publishedAt": "2026-06-09",
-  "downloadUrl": "https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md",
+  "downloadUrl": "https://github.com/wiimri/GX-lite/releases/download/v1.9/GXLightBrowser-Setup-1.9-x64.exe",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "YouTube Shields ya no se inyecta en Crunchyroll ni en otros sitios.",
-    "El MutationObserver espera a que exista el documento antes de iniciarse.",
-    "Playwright verifica que sitios ajenos a YouTube no reciban el script.",
-    "La barra de estado identifica los HTTP 403 emitidos por Crunchyroll.",
-    "Los rechazos del sitio quedan diferenciados de los bloqueos creados por Shields."
+    "Nuevo instalador para Windows 10/11 x64.",
+    "El instalador comprueba e instala WebView2 Runtime y .NET Framework 4.8.",
+    "Se incluyen siempre las tres bibliotecas WebView2 requeridas junto al navegador.",
+    "GX Light detecta WebView2 ausente y muestra instrucciones de reparacion.",
+    "Se agrego documentacion especial para Atlas OS y sistemas modificados."
   ]
 }
