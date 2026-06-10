@@ -57,6 +57,9 @@
       align-items: center;
       justify-content: space-between;
       gap: 10px;
+      min-width: 38px;
+      max-width: 190px;
+      flex: 1 1 190px;
     }
     .tab .close {
       color: #a1b0be;
@@ -95,6 +98,9 @@
       background: #ff334f;
       flex: 0 0 auto;
     }
+    .tabs.dense .tab { padding: 0 6px; }
+    .tabs.dense .tab span:not(.favicon) { display: none; }
+    .tabs.dense .tab .favicon { display: block; margin: auto; }
     .tab.active { background: #353a49; border-color: #63e8ff; }
     .tab.multi-selected { background: #353a49; border: 2px solid #ff6974; position: relative; }
     .tab.multi-selected::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ff6974; position: absolute; right: 4px; top: 3px; }
@@ -188,7 +194,7 @@
         <button class="island-bar" title="Isla con 2 pestanas"></button>
         <button class="tab island island-member multi-selected" data-tab="YouTube" hidden><span class="favicon"></span><span>[S] YouTube</span><span class="close">x</span></button>
         <button class="tab island island-member" data-tab="Musica" hidden><span class="favicon" style="background:#8d66ff"></span><span>Musica</span><span class="close">x</span></button>
-        <button class="tab" data-tab="Chrome Web Store"><span>Chrome Web Store</span><span class="close">x</span></button>
+        <button class="tab" data-tab="Chrome Web Store"><span class="favicon" style="background:#34a853"></span><span>Chrome Web Store</span><span class="close">x</span></button>
         <button class="tab add-tab" style="width:34px">+</button>
       </section>
       <section class="nav">
@@ -239,7 +245,7 @@
       const button = document.createElement('button');
       button.className = 'tab';
       button.dataset.tab = title;
-      button.innerHTML = `<span>${title}</span><span class="close">x</span>`;
+      button.innerHTML = `<span class="favicon" style="background:hsl(${title.length * 31 % 360} 70% 55%)"></span><span>${title}</span><span class="close">x</span>`;
       wireTab(button);
       tabs.insertBefore(button, document.querySelector('.add-tab'));
     }

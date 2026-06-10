@@ -2239,9 +2239,11 @@ namespace GXLightBrowser
                 tab.Height = 28;
                 tab.Margin = new Padding(0, 1, 6, 3);
                 tab.IsSelected = page == _tabs.SelectedTab;
-                tab.ShowCloseGlyph = !_appSettings.CompactIconTabs;
+                tab.IconOnly = _appSettings.CompactIconTabs || width <= 58;
+                tab.ShowCloseGlyph = !tab.IconOnly && width >= 86;
                 tab.IconImage = _appSettings.ShowPageIcons && browserTab != null ? browserTab.Favicon : null;
-                tab.IconOnly = _appSettings.CompactIconTabs;
+                tab.ShowIconPlaceholder = _appSettings.ShowPageIcons && browserTab != null && browserTab.Favicon == null;
+                tab.IconPlaceholderColor = browserTab == null ? Theme.Muted : ColorFromText(GetTabUrl(browserTab));
                 tab.IsMultiSelected = browserTab != null && browserTab.IsSelectedForIsland;
                 if (browserTab != null && browserTab.IsSelectedForIsland)
                 {
@@ -2317,10 +2319,11 @@ namespace GXLightBrowser
 
             ChromeButton island = new ChromeButton();
             island.Text = string.Empty;
-            island.Width = 22;
+            island.Width = Math.Min(40, 14 + Math.Min(5, count) * 6);
             island.Height = 28;
             island.Margin = new Padding(0, 1, 6, 3);
-            island.ShowIslandStripe = true;
+            island.IsIslandToggle = true;
+            island.IslandMemberCount = count;
             island.IslandColor = color;
             island.Accent = color;
             island.AllowDrop = true;
@@ -2926,23 +2929,44 @@ namespace GXLightBrowser
             {
                 return 38;
             }
-            if (_appSettings.TabWidth >= 80)
+
+            HashSet<int> islands = new HashSet<int>();
+            int visibleTabs = 0;
+            int islandWidth = 0;
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
-                return _appSettings.TabWidth;
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab == null)
+                {
+                    visibleTabs++;
+                    continue;
+                }
+                if (tab.IslandId > 0 && islands.Add(tab.IslandId))
+                {
+                    int members = CountIslandMembers(tab.IslandId);
+                    islandWidth += Math.Min(40, 14 + Math.Min(5, members) * 6) + 6;
+                }
+                if (tab.IslandId <= 0 || !_collapsedIslands.Contains(tab.IslandId))
+                {
+                    visibleTabs++;
+                }
             }
 
-            int available = Math.Max(260, _tabStrip.Width - 12);
-            int count = Math.Max(1, _tabs.TabPages.Count);
-            int width = (available / count) - 8;
-            if (width < 118)
+            int available = Math.Max(80, _tabStrip.Width - islandWidth - 46);
+            int automaticWidth = (available / Math.Max(1, visibleTabs)) - 6;
+            automaticWidth = Math.Max(38, Math.Min(190, automaticWidth));
+            return _appSettings.TabWidth >= 80 ? Math.Min(_appSettings.TabWidth, automaticWidth) : automaticWidth;
+        }
+
+        private int CountIslandMembers(int islandId)
+        {
+            int count = 0;
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
-                return 118;
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.IslandId == islandId) count++;
             }
-            if (width > 190)
-            {
-                return 190;
-            }
-            return width;
+            return count;
         }
 
         private BrowserTab ActiveTab()
@@ -4097,12 +4121,42 @@ namespace GXLightBrowser
 
             SetupSuspensionPlaceholder(tab);
             _tabs.TabPages.Add(page);
+            Task ignored = RefreshSuspendedFaviconAsync(tab);
             RebuildTabStrip();
             if (!_restoringSession)
             {
                 SaveSession();
             }
             return tab;
+        }
+
+        private async Task RefreshSuspendedFaviconAsync(BrowserTab tab)
+        {
+            if (tab == null || string.IsNullOrWhiteSpace(tab.SuspendedUrl)) return;
+            try
+            {
+                Uri pageUri;
+                if (!Uri.TryCreate(tab.SuspendedUrl, UriKind.Absolute, out pageUri) ||
+                    (pageUri.Scheme != Uri.UriSchemeHttp && pageUri.Scheme != Uri.UriSchemeHttps))
+                {
+                    return;
+                }
+                Uri faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                    byte[] bytes = await client.DownloadDataTaskAsync(faviconUri);
+                    using (MemoryStream stream = new MemoryStream(bytes))
+                    using (Image image = Image.FromStream(stream))
+                    {
+                        tab.Favicon = new Bitmap(image);
+                    }
+                }
+                RebuildTabStrip();
+            }
+            catch
+            {
+            }
         }
 
         private void SaveSession()

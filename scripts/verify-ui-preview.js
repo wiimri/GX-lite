@@ -107,6 +107,22 @@ async function main() {
         report.failures.push(`middle-click favorite did not create a tab: ${githubCount}`);
       }
 
+      await page.evaluate(() => {
+        document.querySelector(".tabs").classList.add("dense");
+        for (let i = 0; i < 20; i += 1) makeTab(`Dense ${i}`);
+      });
+      const denseReport = await page.locator(".tabs").evaluate((tabs) => {
+        const entries = [...tabs.querySelectorAll(".tab[data-tab]")];
+        return {
+          overflow: tabs.scrollWidth > tabs.clientWidth,
+          missingIcons: entries.filter((tab) => !tab.querySelector(".favicon")).length,
+          narrowest: Math.min(...entries.map((tab) => tab.getBoundingClientRect().width))
+        };
+      });
+      if (denseReport.overflow || denseReport.missingIcons || denseReport.narrowest < 37) {
+        report.failures.push(`dense tabs failed: ${JSON.stringify(denseReport)}`);
+      }
+
       await page.locator(".menu-button").click();
       const menuVisible = await page.locator(".menu-preview").isVisible();
       const menuText = await page.locator(".menu-preview").innerText();

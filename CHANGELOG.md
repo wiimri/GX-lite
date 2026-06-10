@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.14`
+- Version publicada: `1.15`
 - Fecha: `2026-06-10`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,20 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.15 - Pestanas adaptables con favicon permanente
+
+Fecha: `2026-06-10`
+
+Cambios:
+
+- El ancho automatico deja de imponer el minimo fijo de 118 px y puede reducirse hasta 38 px.
+- Cuando falta espacio desaparece primero el cierre, despues el titulo y permanece el favicon centrado.
+- Los tamanos manuales tambien se reducen temporalmente si son demasiadas pestanas para la barra.
+- Las paginas sin favicon muestran un marcador coloreado basado en su dominio.
+- Las pestanas suspendidas descargan el favicon del sitio sin crear un WebView adicional.
+- Las islas compactas muestran varias barras verticales segun la cantidad de pestanas agrupadas.
+- El calculo descuenta barras de isla, pestanas colapsadas y el boton de nueva pestana.
 
 ## v1.14 - Seleccion visible, arrastre e islas funcionales
 

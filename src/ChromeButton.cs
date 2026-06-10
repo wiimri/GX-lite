@@ -29,6 +29,10 @@ namespace GXLightBrowser
         public Color IslandColor { get; set; }
         public Image IconImage { get; set; }
         public bool IconOnly { get; set; }
+        public bool ShowIconPlaceholder { get; set; }
+        public Color IconPlaceholderColor { get; set; }
+        public bool IsIslandToggle { get; set; }
+        public int IslandMemberCount { get; set; }
 
         public bool IsCloseHit(Point point)
         {
@@ -70,6 +74,22 @@ namespace GXLightBrowser
                 pevent.Graphics.DrawPath(border, path);
             }
 
+            if (IsIslandToggle)
+            {
+                int bars = Math.Max(2, Math.Min(5, IslandMemberCount));
+                int totalWidth = bars * 4 + (bars - 1) * 2;
+                int left = rect.Left + (rect.Width - totalWidth) / 2;
+                for (int i = 0; i < bars; i++)
+                {
+                    Color barColor = i % 2 == 0 ? IslandColor : ControlPaint.Light(IslandColor, 0.25f);
+                    using (SolidBrush islandBrush = new SolidBrush(barColor))
+                    {
+                        pevent.Graphics.FillRectangle(islandBrush, left + i * 6, rect.Top + 5, 4, rect.Height - 10);
+                    }
+                }
+                return;
+            }
+
             if (ShowIslandStripe)
             {
                 using (SolidBrush islandBrush = new SolidBrush(IslandColor))
@@ -87,12 +107,26 @@ namespace GXLightBrowser
             }
 
             int contentLeft = rect.Left + (ShowIslandStripe ? 16 : 8);
-            if (IconImage != null)
+            if (IconImage != null || ShowIconPlaceholder)
             {
                 int iconSize = Math.Min(16, rect.Height - 8);
                 int iconLeft = IconOnly ? rect.Left + (rect.Width - iconSize) / 2 : contentLeft;
                 int iconTop = rect.Top + (rect.Height - iconSize) / 2;
-                pevent.Graphics.DrawImage(IconImage, new Rectangle(iconLeft, iconTop, iconSize, iconSize));
+                if (IconImage != null)
+                {
+                    pevent.Graphics.DrawImage(IconImage, new Rectangle(iconLeft, iconTop, iconSize, iconSize));
+                }
+                else
+                {
+                    using (SolidBrush placeholder = new SolidBrush(IconPlaceholderColor))
+                    {
+                        pevent.Graphics.FillEllipse(placeholder, iconLeft, iconTop, iconSize, iconSize);
+                    }
+                    using (SolidBrush center = new SolidBrush(Color.FromArgb(230, 255, 255, 255)))
+                    {
+                        pevent.Graphics.FillEllipse(center, iconLeft + 5, iconTop + 5, 6, 6);
+                    }
+                }
                 contentLeft += iconSize + 6;
             }
 
