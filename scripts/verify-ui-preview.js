@@ -78,6 +78,10 @@ async function main() {
       if (visibleIslandMembers !== 2) {
         report.failures.push(`collapsed island did not expand: ${visibleIslandMembers}`);
       }
+      const selectedOutline = await page.locator(".island-member.multi-selected:visible").count();
+      if (selectedOutline !== 1) {
+        report.failures.push(`multi-selection is not visibly represented: ${selectedOutline}`);
+      }
 
       await page.locator('.shortcut[data-title="YouTube"]').click({ button: "middle" });
       const afterMiddle = await page.locator(".tab[data-tab]").count();

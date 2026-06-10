@@ -319,6 +319,7 @@ namespace GXLightBrowser
                     _activeIslandId = _nextIslandId++;
                     _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
                     await CreateTabAsync(HomeUrl);
+                    _activeIslandId = 0;
                 }
 
                 if (e.Control && e.KeyCode == Keys.L)
@@ -1216,6 +1217,7 @@ namespace GXLightBrowser
                 _activeIslandId = _nextIslandId++;
                 _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
                 await CreateTabAsync(HomeUrl);
+                _activeIslandId = 0;
             });
             menu.Items.Add("New window                                  Ctrl+N", null, delegate { StartNewWindow(); });
             menu.Items.Add("New private window                          Ctrl+Shift+N", null, delegate { MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light"); });
@@ -2218,16 +2220,17 @@ namespace GXLightBrowser
             _tabStrip.Controls.Clear();
 
             int width = CalculateTabWidth();
+            HashSet<int> renderedIslandBars = new HashSet<int>();
             for (int i = 0; i < _tabs.TabPages.Count; i++)
             {
                 TabPage page = _tabs.TabPages[i];
                 BrowserTab browserTab = page.Tag as BrowserTab;
+                if (browserTab != null && browserTab.IslandId > 0 && renderedIslandBars.Add(browserTab.IslandId))
+                {
+                    AddIslandToggleButton(browserTab.IslandId);
+                }
                 if (browserTab != null && browserTab.IslandId > 0 && _collapsedIslands.Contains(browserTab.IslandId))
                 {
-                    if (IsFirstTabInIsland(i, browserTab.IslandId))
-                    {
-                        AddCollapsedIslandButton(browserTab.IslandId);
-                    }
                     continue;
                 }
                 ChromeButton tab = new ChromeButton();
@@ -2239,6 +2242,7 @@ namespace GXLightBrowser
                 tab.ShowCloseGlyph = !_appSettings.CompactIconTabs;
                 tab.IconImage = _appSettings.ShowPageIcons && browserTab != null ? browserTab.Favicon : null;
                 tab.IconOnly = _appSettings.CompactIconTabs;
+                tab.IsMultiSelected = browserTab != null && browserTab.IsSelectedForIsland;
                 if (browserTab != null && browserTab.IsSelectedForIsland)
                 {
                     tab.Accent = Theme.Warning;
@@ -2249,6 +2253,7 @@ namespace GXLightBrowser
                     tab.IslandColor = GetIslandColor(browserTab);
                     tab.Accent = tab.IslandColor;
                 }
+                WireTabDragAndDrop(tab, browserTab);
                 int index = i;
                 tab.MouseUp += delegate(object sender, MouseEventArgs e)
                 {
@@ -2296,17 +2301,7 @@ namespace GXLightBrowser
             _tabStrip.ResumeLayout();
         }
 
-        private bool IsFirstTabInIsland(int index, int islandId)
-        {
-            for (int i = 0; i < index; i++)
-            {
-                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
-                if (tab != null && tab.IslandId == islandId) return false;
-            }
-            return true;
-        }
-
-        private void AddCollapsedIslandButton(int islandId)
+        private void AddIslandToggleButton(int islandId)
         {
             int count = 0;
             Color color = Theme.Accent;
@@ -2328,21 +2323,95 @@ namespace GXLightBrowser
             island.ShowIslandStripe = true;
             island.IslandColor = color;
             island.Accent = color;
+            island.AllowDrop = true;
+            island.DragEnter += delegate(object sender, DragEventArgs e)
+            {
+                e.Effect = e.Data.GetDataPresent(typeof(BrowserTab)) ? DragDropEffects.Move : DragDropEffects.None;
+            };
+            island.DragDrop += delegate(object sender, DragEventArgs e)
+            {
+                BrowserTab dragged = e.Data.GetData(typeof(BrowserTab)) as BrowserTab;
+                AddTabToIsland(dragged, islandId);
+            };
             island.MouseUp += delegate(object sender, MouseEventArgs e)
             {
                 if (e.Button == MouseButtons.Left)
                 {
-                    _collapsedIslands.Remove(islandId);
-                    SaveSession();
-                    RebuildTabStrip();
+                    ToggleIslandCollapsed(islandId);
                 }
                 else if (e.Button == MouseButtons.Right)
                 {
                     ShowIslandContextMenu(islandId, island);
                 }
             };
-            _tips.SetToolTip(island, "Isla con " + count + " pestanas. Clic para desplegar.");
+            _tips.SetToolTip(island, "Isla con " + count + " pestanas. Clic para " +
+                (_collapsedIslands.Contains(islandId) ? "desplegar" : "colapsar") + ". Arrastra pestanas aqui.");
             _tabStrip.Controls.Add(island);
+        }
+
+        private void WireTabDragAndDrop(ChromeButton button, BrowserTab tab)
+        {
+            if (tab == null) return;
+
+            Point dragStart = Point.Empty;
+            button.AllowDrop = true;
+            button.MouseDown += delegate(object sender, MouseEventArgs e)
+            {
+                if (e.Button == MouseButtons.Left) dragStart = e.Location;
+            };
+            button.MouseMove += delegate(object sender, MouseEventArgs e)
+            {
+                if (e.Button != MouseButtons.Left || dragStart == Point.Empty) return;
+                Rectangle dragBounds = new Rectangle(
+                    dragStart.X - SystemInformation.DragSize.Width / 2,
+                    dragStart.Y - SystemInformation.DragSize.Height / 2,
+                    SystemInformation.DragSize.Width,
+                    SystemInformation.DragSize.Height);
+                if (!dragBounds.Contains(e.Location))
+                {
+                    dragStart = Point.Empty;
+                    button.DoDragDrop(tab, DragDropEffects.Move);
+                }
+            };
+            button.DragEnter += delegate(object sender, DragEventArgs e)
+            {
+                e.Effect = e.Data.GetDataPresent(typeof(BrowserTab)) ? DragDropEffects.Move : DragDropEffects.None;
+            };
+            button.DragDrop += delegate(object sender, DragEventArgs e)
+            {
+                BrowserTab dragged = e.Data.GetData(typeof(BrowserTab)) as BrowserTab;
+                if (dragged == null || dragged == tab) return;
+                if (tab.IslandId > 0)
+                {
+                    AddTabToIsland(dragged, tab.IslandId);
+                }
+                else
+                {
+                    CreateIslandFromTabs(dragged, tab);
+                }
+            };
+        }
+
+        private void AddTabToIsland(BrowserTab tab, int islandId)
+        {
+            if (tab == null || islandId <= 0) return;
+            tab.IslandId = islandId;
+            tab.IsSelectedForIsland = false;
+            SaveSession();
+            RebuildTabStrip();
+        }
+
+        private void CreateIslandFromTabs(BrowserTab first, BrowserTab second)
+        {
+            if (first == null || second == null || first == second) return;
+            int islandId = _nextIslandId++;
+            _islandColors[islandId] = ColorFromText(GetTabUrl(second));
+            first.IslandId = islandId;
+            second.IslandId = islandId;
+            first.IsSelectedForIsland = false;
+            second.IsSelectedForIsland = false;
+            SaveSession();
+            RebuildTabStrip();
         }
 
         private void SelectTabRange(int from, int to)
@@ -2370,6 +2439,10 @@ namespace GXLightBrowser
             menu.ForeColor = Theme.Text;
             menu.ShowImageMargin = false;
             menu.Items.Add("New tab                                      Ctrl+T", null, async delegate { await CreateTabAsync(HomeUrl); });
+            int selectedCount = SelectedTabsOr(null).Count;
+            ToolStripMenuItem selectionInfo = new ToolStripMenuItem("Selected tabs: " + selectedCount);
+            selectionInfo.Enabled = false;
+            menu.Items.Add(selectionInfo);
             menu.Items.Add("Create tab island from selected             Alt+T", null, delegate { CreateIslandFromSelection(tab); });
             menu.Items.Add(tab.IsSelectedForIsland ? "Deselect tab" : "Select tab", null, delegate
             {
@@ -2377,8 +2450,25 @@ namespace GXLightBrowser
                 RebuildTabStrip();
             });
             menu.Items.Add("Clear tab selection", null, delegate { ClearTabSelection(); });
+            ToolStripMenuItem tabSize = new ToolStripMenuItem("Tab size");
+            AddTabWidthMenuItem(tabSize, "Automatic", 0);
+            AddTabWidthMenuItem(tabSize, "Small", 92);
+            AddTabWidthMenuItem(tabSize, "Medium", 140);
+            AddTabWidthMenuItem(tabSize, "Large", 190);
+            menu.Items.Add(tabSize);
+            ToolStripMenuItem compact = new ToolStripMenuItem("Compact icon tab");
+            compact.Checked = _appSettings.CompactIconTabs;
+            compact.Click += delegate
+            {
+                _appSettings.CompactIconTabs = !_appSettings.CompactIconTabs;
+                if (_appSettings.CompactIconTabs) _appSettings.ShowPageIcons = true;
+                _appSettings.Save();
+                RebuildTabStrip();
+            };
+            menu.Items.Add(compact);
             if (tab.IslandId > 0)
             {
+                menu.Items.Add("Add selected tabs to this island", null, delegate { AddSelectedTabsToIsland(tab.IslandId); });
                 menu.Items.Add(_collapsedIslands.Contains(tab.IslandId) ? "Expand tab island" : "Collapse tab island", null,
                     delegate { ToggleIslandCollapsed(tab.IslandId); });
                 menu.Items.Add("Remove tabs from island", null, delegate { DissolveIsland(tab.IslandId); });
@@ -2405,6 +2495,7 @@ namespace GXLightBrowser
             menu.BackColor = Theme.Panel;
             menu.ForeColor = Theme.Text;
             menu.ShowImageMargin = false;
+            menu.Items.Add("Add selected tabs to island", null, delegate { AddSelectedTabsToIsland(islandId); });
             menu.Items.Add("Expand tab island", null, delegate { ToggleIslandCollapsed(islandId); });
             menu.Items.Add("Remove tabs from island", null, delegate { DissolveIsland(islandId); });
             menu.Show(owner, new Point(0, owner.Height + 4));
@@ -2426,6 +2517,18 @@ namespace GXLightBrowser
             }
             _collapsedIslands.Remove(islandId);
             _islandColors.Remove(islandId);
+            SaveSession();
+            RebuildTabStrip();
+        }
+
+        private void AddSelectedTabsToIsland(int islandId)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(null);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                selected[i].IslandId = islandId;
+                selected[i].IsSelectedForIsland = false;
+            }
             SaveSession();
             RebuildTabStrip();
         }
@@ -2452,9 +2555,12 @@ namespace GXLightBrowser
 
         private void CreateIslandFromSelection(BrowserTab fallback)
         {
-            List<BrowserTab> selected = SelectedTabsOr(fallback);
-            if (selected.Count == 0)
+            List<BrowserTab> selected = SelectedTabsOr(null);
+            if (selected.Count < 2)
             {
+                MessageBox.Show(this,
+                    "Selecciona al menos dos pestanas con Ctrl+clic o selecciona un rango con Shift+clic.",
+                    "Crear isla de pestanas", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -2468,6 +2574,7 @@ namespace GXLightBrowser
             }
             _activeIslandId = islandId;
             _collapsedIslands.Add(islandId);
+            _activeIslandId = 0;
             SaveSession();
             RebuildTabStrip();
         }
@@ -3763,6 +3870,7 @@ namespace GXLightBrowser
         private async Task RefreshFaviconAsync(CoreWebView2 core, BrowserTab tab)
         {
             if (core == null || tab == null) return;
+            bool loaded = false;
             try
             {
                 using (Stream stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
@@ -3772,11 +3880,57 @@ namespace GXLightBrowser
                     tab.Favicon = new Bitmap(image);
                     if (previous != null) previous.Dispose();
                 }
+                loaded = true;
                 RebuildTabStrip();
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Info("Favicon unavailable: " + ex.Message);
+            }
+            if (!loaded)
+            {
+                await RefreshFaviconFallbackAsync(core, tab);
+            }
+        }
+
+        private async Task RefreshFaviconFallbackAsync(CoreWebView2 core, BrowserTab tab)
+        {
+            try
+            {
+                Uri faviconUri;
+                string candidate = core.FaviconUri;
+                if (!Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                {
+                    Uri pageUri;
+                    if (!Uri.TryCreate(core.Source, UriKind.Absolute, out pageUri) ||
+                        (pageUri.Scheme != Uri.UriSchemeHttp && pageUri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        return;
+                    }
+                    faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
+                }
+
+                if (faviconUri.Scheme != Uri.UriSchemeHttp && faviconUri.Scheme != Uri.UriSchemeHttps)
+                {
+                    return;
+                }
+
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                    byte[] bytes = await client.DownloadDataTaskAsync(faviconUri);
+                    using (MemoryStream stream = new MemoryStream(bytes))
+                    using (Image image = Image.FromStream(stream))
+                    {
+                        Image previous = tab.Favicon;
+                        tab.Favicon = new Bitmap(image);
+                        if (previous != null) previous.Dispose();
+                    }
+                }
+                RebuildTabStrip();
+            }
+            catch
+            {
+                // Some sites do not expose a downloadable favicon.
             }
         }
 
@@ -3930,14 +4084,15 @@ namespace GXLightBrowser
 
         private BrowserTab CreateSuspendedTab(string url, string title, int islandId)
         {
-            TabPage page = new TabPage("[S] " + Trim(title, 18));
+            string cleanTitle = (title ?? "Pestana").Replace("[Suspended] ", "").Replace("[S] ", "");
+            TabPage page = new TabPage("[S] " + Trim(cleanTitle, 18));
             page.BackColor = Theme.Window;
 
             BrowserTab tab = new BrowserTab(page, null);
             tab.IslandId = islandId;
             tab.IsSuspended = true;
             tab.SuspendedUrl = url;
-            tab.SuspendedTitle = title;
+            tab.SuspendedTitle = cleanTitle;
             page.Tag = tab;
 
             SetupSuspensionPlaceholder(tab);

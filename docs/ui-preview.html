@@ -96,6 +96,8 @@
       flex: 0 0 auto;
     }
     .tab.active { background: #353a49; border-color: #63e8ff; }
+    .tab.multi-selected { background: #353a49; border: 2px solid #ff6974; position: relative; }
+    .tab.multi-selected::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #ff6974; position: absolute; right: 4px; top: 3px; }
     .nav {
       display: grid;
       grid-template-columns: auto minmax(180px, 1fr) auto;
@@ -184,7 +186,7 @@
       <section class="tabs">
         <button class="tab active" data-tab="Google"><span class="favicon" style="background:#4c8bf5"></span><span>Google</span><span class="close">x</span></button>
         <button class="island-bar" title="Isla con 2 pestanas"></button>
-        <button class="tab island island-member" data-tab="YouTube" hidden><span class="favicon"></span><span>[S] YouTube</span><span class="close">x</span></button>
+        <button class="tab island island-member multi-selected" data-tab="YouTube" hidden><span class="favicon"></span><span>[S] YouTube</span><span class="close">x</span></button>
         <button class="tab island island-member" data-tab="Musica" hidden><span class="favicon" style="background:#8d66ff"></span><span>Musica</span><span class="close">x</span></button>
         <button class="tab" data-tab="Chrome Web Store"><span>Chrome Web Store</span><span class="close">x</span></button>
         <button class="tab add-tab" style="width:34px">+</button>

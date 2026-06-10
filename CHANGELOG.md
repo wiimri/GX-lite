@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.13`
+- Version publicada: `1.14`
 - Fecha: `2026-06-10`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,23 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.14 - Seleccion visible, arrastre e islas funcionales
+
+Fecha: `2026-06-10`
+
+Cambios:
+
+- Las pestanas multiseleccionadas muestran un borde rojo y un marcador visible.
+- `Ctrl+clic` alterna la seleccion individual y `Shift+clic` selecciona un rango.
+- Crear una isla manualmente exige al menos dos pestanas seleccionadas, evitando islas individuales accidentales.
+- Cada isla mantiene una barra vertical independiente cuando esta desplegada o colapsada.
+- Pulsar la barra alterna entre colapsar y desplegar la isla.
+- Se pueden arrastrar pestanas hacia la barra o hacia una pestana que ya pertenece a una isla.
+- Arrastrar una pestana sobre otra sin isla crea una isla nueva.
+- El menu contextual permite agregar seleccionadas a una isla, cambiar el tamano y activar modo compacto.
+- Las sesiones antiguas con `[Suspended]` se muestran usando el indicador corto `[S]`.
+- Los favicons usan la URL informada por WebView2 o `/favicon.ico` cuando el metodo directo no esta implementado.
 
 ## v1.13 - Instalacion en Program Files y actualizador verificado
 

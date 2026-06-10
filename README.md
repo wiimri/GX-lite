@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.13`
+Version actual: `1.14`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -29,6 +29,9 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Pregunta nativa antes de guardar passwords y autofill de WebView2 habilitado.
 - Tab islands colapsables y persistentes para agrupar pestanas.
 - Seleccion multiple de pestanas con `Ctrl+clic` o `Shift+clic`.
+- Seleccion multiple visible mediante borde y marcador de color.
+- Islas con barra propia siempre visible; la barra colapsa, despliega y recibe pestanas arrastradas.
+- Arrastrar una pestana sobre otra crea una isla nueva de dos pestanas.
 - Menu contextual de tab islands: crear, colapsar, desplegar, disolver, duplicar, recargar, copiar URLs y cerrar seleccionadas.
 - Suspension real de pestanas inactivas para liberar WebView2 y memoria.
 - Monitor visible de memoria y GX Control configurable.
@@ -48,7 +51,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.13`
+- linea de mejora actual: `1.14`
 - cada mejora o correccion del navegador sube la version menor: `1.12`, `1.13`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 

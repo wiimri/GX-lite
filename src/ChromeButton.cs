@@ -22,6 +22,7 @@ namespace GXLightBrowser
         }
 
         public bool IsSelected { get; set; }
+        public bool IsMultiSelected { get; set; }
         public Color Accent { get; set; }
         public bool ShowCloseGlyph { get; set; }
         public bool ShowIslandStripe { get; set; }
@@ -59,10 +60,11 @@ namespace GXLightBrowser
             Rectangle rect = new Rectangle(0, 0, Width - 1, Height - 1);
             int radius = 8;
 
-            Color fill = IsSelected ? Theme.Selected : (_hover ? Theme.Hover : Theme.Button);
+            Color fill = IsSelected || IsMultiSelected ? Theme.Selected : (_hover ? Theme.Hover : Theme.Button);
+            Color borderColor = IsMultiSelected ? Theme.Warning : (IsSelected ? Accent : Theme.Border);
             using (GraphicsPath path = RoundedRect(rect, radius))
             using (SolidBrush brush = new SolidBrush(fill))
-            using (Pen border = new Pen(IsSelected ? Accent : Theme.Border))
+            using (Pen border = new Pen(borderColor, IsMultiSelected ? 2f : 1f))
             {
                 pevent.Graphics.FillPath(brush, path);
                 pevent.Graphics.DrawPath(border, path);
@@ -73,6 +75,14 @@ namespace GXLightBrowser
                 using (SolidBrush islandBrush = new SolidBrush(IslandColor))
                 {
                     pevent.Graphics.FillRectangle(islandBrush, rect.Left + 5, rect.Top + 5, 5, rect.Height - 10);
+                }
+            }
+
+            if (IsMultiSelected)
+            {
+                using (SolidBrush selectedBrush = new SolidBrush(Theme.Warning))
+                {
+                    pevent.Graphics.FillEllipse(selectedBrush, rect.Right - 11, rect.Top + 3, 7, 7);
                 }
             }
 
