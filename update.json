@@ -1,14 +1,15 @@
 {
-  "version": "1.12",
-  "releaseName": "GX Light Browser 1.12",
+  "version": "1.13",
+  "releaseName": "GX Light Browser 1.13",
   "publishedAt": "2026-06-10",
   "downloadUrl": "https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe",
+  "sha256Url": "https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.sha256.txt",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "Passwords: GX Light pregunta antes de guardar y Windows cifra las credenciales.",
-    "Las pestanas suspendidas ahora usan el indicador corto [S].",
-    "Favicons reforzados y tamanos de pestana configurables.",
-    "Seleccion multiple con Ctrl o Shift e islas colapsables persistentes.",
-    "El menu puede buscar y descargar el instalador de la ultima version."
+    "El instalador usa la carpeta Program Files nativa de Windows.",
+    "GX Light detecta versiones nuevas desde GitHub al iniciar.",
+    "La actualizacion se descarga desde Releases y verifica su SHA-256.",
+    "El instalador se abre directamente y conserva perfil, passwords y sesion.",
+    "Incluye las mejoras de pestanas, favicons e islas colapsables de 1.12."
   ]
 }

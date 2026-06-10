@@ -1,5 +1,5 @@
 #define MyAppName "GX Light Browser"
-#define MyAppVersion "1.12"
+#define MyAppVersion "1.13"
 #define MyAppPublisher "wiimri"
 #define MyAppURL "https://github.com/wiimri/GX-lite"
 #define MyAppExeName "GXLightBrowser.exe"
@@ -11,10 +11,14 @@ AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
-DefaultDirName={localappdata}\Programs\GXLightBrowser
+DefaultDirName={autopf}\GXLightBrowser
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
+UsePreviousAppDir=no
+CloseApplications=yes
+RestartApplications=no
+AppMutex=GXLightBrowser-Install-Mutex
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
@@ -36,6 +40,11 @@ Source: "..\bin\Microsoft.Web.WebView2.WinForms.dll"; DestDir: "{app}"; Flags: i
 Source: "..\bin\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\prerequisites\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "..\prerequisites\ndp48-web.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+
+[InstallDelete]
+Type: filesandordirs; Name: "{localappdata}\Programs\GXLightBrowser"
+Type: files; Name: "{userdesktop}\GX Light Browser.lnk"
+Type: files; Name: "{userprograms}\GX Light Browser.lnk"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

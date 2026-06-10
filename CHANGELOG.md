@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.12`
+- Version publicada: `1.13`
 - Fecha: `2026-06-10`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,27 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.13 - Instalacion en Program Files y actualizador verificado
+
+Fecha: `2026-06-10`
+
+Cambios:
+
+- El instalador usa `{autopf}\GXLightBrowser`, que corresponde a la carpeta nativa Program Files.
+- La instalacion solicita permisos de administrador y deja de reutilizar la antigua ruta en LocalAppData.
+- La migracion elimina solamente los binarios y accesos directos antiguos; el perfil del usuario permanece intacto.
+- GX Light detecta automaticamente una version remota mayor al iniciar.
+- `Menu > Buscar actualizaciones` descarga el instalador en vez de abrir solamente un enlace.
+- La descarga se valida contra el SHA-256 publicado antes de abrir el instalador.
+- El proceso guarda la sesion, abre el instalador y cierra GX Light para permitir reemplazar los binarios.
+- El build genera hashes permanentes y versionados para GitHub Releases.
+
+Pruebas:
+
+- Compilacion del ejecutable completada.
+- Pruebas Playwright y Privacy Firewall ejecutadas.
+- Instalador construido y comprobado sobre la ruta de programas de Windows.
 
 ## v1.12 - Islas colapsables, favicons y actualizaciones visibles
 

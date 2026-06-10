@@ -1334,11 +1334,71 @@ namespace GXLightBrowser
             DialogResult result = MessageBox.Show(this,
                 "Hay una nueva version disponible: " + latest.Version + Environment.NewLine +
                 "El instalador actualizara GX Light y conservara tu perfil, passwords, favoritos y sesion." +
-                Environment.NewLine + Environment.NewLine + "¿Descargar el instalador ahora?",
+                Environment.NewLine + Environment.NewLine + "¿Descargar y abrir el instalador ahora?",
                 "Actualizacion disponible", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
             if (result == DialogResult.Yes && !string.IsNullOrWhiteSpace(latest.DownloadUrl))
             {
-                Process.Start(latest.DownloadUrl);
+                await DownloadAndLaunchUpdateAsync(latest);
+            }
+        }
+
+        private async Task DownloadAndLaunchUpdateAsync(UpdateManifest manifest)
+        {
+            string installerPath = Path.Combine(Path.GetTempPath(), "GXLightBrowser-Setup-" + manifest.Version + "-x64.exe");
+            string hashPath = installerPath + ".sha256.txt";
+            try
+            {
+                _status.Text = "Descargando actualizacion " + manifest.Version + "...";
+                using (WebClient client = new WebClient())
+                {
+                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                    await client.DownloadFileTaskAsync(new Uri(manifest.DownloadUrl), installerPath);
+                    if (!string.IsNullOrWhiteSpace(manifest.Sha256Url))
+                    {
+                        await client.DownloadFileTaskAsync(new Uri(manifest.Sha256Url), hashPath);
+                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(manifest.Sha256Url) && !VerifyInstallerHash(installerPath, hashPath))
+                {
+                    File.Delete(installerPath);
+                    MessageBox.Show(this, "La firma SHA-256 de la actualizacion no coincide. No se abrira el instalador.",
+                        "Actualizacion rechazada", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                SaveSession();
+                ProcessStartInfo startInfo = new ProcessStartInfo(installerPath);
+                startInfo.UseShellExecute = true;
+                Process.Start(startInfo);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Update download failed: " + ex.Message);
+                MessageBox.Show(this, "No se pudo descargar o abrir la actualizacion." + Environment.NewLine + ex.Message,
+                    "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                UpdateStatus();
+            }
+        }
+
+        private static bool VerifyInstallerHash(string installerPath, string hashPath)
+        {
+            if (!File.Exists(installerPath) || !File.Exists(hashPath))
+            {
+                return false;
+            }
+
+            string expected = File.ReadAllText(hashPath, Encoding.UTF8).Trim().Split(' ')[0].Trim();
+            using (SHA256 sha = SHA256.Create())
+            using (FileStream stream = File.OpenRead(installerPath))
+            {
+                byte[] hash = sha.ComputeHash(stream);
+                string actual = BitConverter.ToString(hash).Replace("-", string.Empty);
+                return string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase);
             }
         }
 

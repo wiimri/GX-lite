@@ -24,6 +24,9 @@ namespace GXLightBrowser
         [DataMember(Name = "downloadUrl")]
         public string DownloadUrl { get; set; }
 
+        [DataMember(Name = "sha256Url")]
+        public string Sha256Url { get; set; }
+
         [DataMember(Name = "sourceUrl")]
         public string SourceUrl { get; set; }
 
@@ -38,6 +41,7 @@ namespace GXLightBrowser
                 ReleaseName = VersionInfo.ReleaseName,
                 PublishedAt = "2026-06-08",
                 DownloadUrl = "https://github.com/wiimri/GX-lite/releases",
+                Sha256Url = string.Empty,
                 SourceUrl = "https://github.com/wiimri/GX-lite",
                 Highlights = VersionInfo.Highlights()
             };

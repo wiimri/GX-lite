@@ -11,8 +11,14 @@ El instalador:
 - comprueba Microsoft Edge WebView2 Evergreen Runtime;
 - instala silenciosamente los requisitos faltantes usando instaladores oficiales de Microsoft;
 - crea accesos directos y un desinstalador.
+- instala GX Light en la carpeta de programas nativa de Windows (`{autopf}\GXLightBrowser`).
 
-La instalacion es por usuario y no necesita permisos de administrador en una instalacion normal.
+La instalacion solicita permisos de administrador porque escribe en `Program Files`.
+
+Al actualizar desde una version antigua instalada en `%LOCALAPPDATA%\Programs\GXLightBrowser`, la version
+nueva se instala en `Program Files`. El perfil de usuario no se mueve ni se elimina porque permanece en
+`%LOCALAPPDATA%\GXLightBrowser`. El instalador elimina solamente la carpeta binaria antigua y sus accesos
+directos obsoletos para evitar abrir accidentalmente una version anterior.
 
 ## Atlas OS y Windows modificados
 

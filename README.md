@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.12`
+Version actual: `1.13`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -48,7 +48,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.12`
+- linea de mejora actual: `1.13`
 - cada mejora o correccion del navegador sube la version menor: `1.12`, `1.13`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
@@ -69,8 +69,8 @@ https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md
 ```
 
 `Menu > Buscar actualizaciones` compara la version instalada con `update.json`. Si hay una version mayor,
-ofrece descargar el instalador permanente. Al ejecutarlo, actualiza los binarios sobre la instalacion
-existente y conserva perfil, passwords, favoritos y sesion.
+descarga el instalador permanente, verifica su SHA-256 y solicita abrirlo. Al ejecutarlo, actualiza los
+binarios y conserva perfil, passwords, favoritos y sesion.
 
 Por seguridad, GX Light todavia no instala silenciosamente: la descarga y ejecucion deben ser confirmadas.
 La siguiente mejora critica es firmar el instalador y verificar criptograficamente su manifiesto y SHA-256.
@@ -91,8 +91,10 @@ El script de build descarga el paquete oficial `Microsoft.Web.WebView2` desde Nu
 
 ## Instalador
 
-Desde la version `1.9`, GX Light cuenta con un instalador para Windows 10/11 x64. El instalador copia el
-navegador completo y comprueba los requisitos que sistemas modificados como Atlas OS pueden eliminar:
+Desde la version `1.9`, GX Light cuenta con un instalador para Windows 10/11 x64. Desde `1.13`, instala en
+la carpeta nativa de programas de Windows, normalmente `C:\Program Files\GXLightBrowser`, y solicita
+permisos de administrador. El instalador copia el navegador completo y comprueba los requisitos que
+sistemas modificados como Atlas OS pueden eliminar:
 
 - Microsoft Edge WebView2 Evergreen Runtime.
 - Microsoft .NET Framework 4.8.
@@ -115,10 +117,11 @@ Para publicar el instalador como asset de GitHub Release usando la credencial se
 .\scripts\Publish-Release.ps1 -Version 1.10 -Assets .\dist\GXLightBrowser-Setup-1.10-x64.exe,.\dist\GXLightBrowser-Setup-x64.exe
 ```
 
-El instalador publicado puede descargarse desde:
+El instalador y su comprobacion SHA-256 permanentes pueden descargarse desde:
 
 ```text
 https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe
+https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.sha256.txt
 ```
 
 ## Extensiones

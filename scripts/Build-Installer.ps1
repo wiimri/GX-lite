@@ -47,7 +47,15 @@ $VersionedInstaller = Get-ChildItem $Dist -Filter "GXLightBrowser-Setup-*-x64.ex
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 if ($null -ne $VersionedInstaller) {
-    Copy-Item $VersionedInstaller.FullName (Join-Path $Dist "GXLightBrowser-Setup-x64.exe") -Force
+    $LatestInstaller = Join-Path $Dist "GXLightBrowser-Setup-x64.exe"
+    Copy-Item $VersionedInstaller.FullName $LatestInstaller -Force
+
+    $VersionedHash = (Get-FileHash $VersionedInstaller.FullName -Algorithm SHA256).Hash
+    $LatestHash = (Get-FileHash $LatestInstaller -Algorithm SHA256).Hash
+    Set-Content -Path (Join-Path $Dist ($VersionedInstaller.BaseName + ".sha256.txt")) `
+        -Value ($VersionedHash + "  " + $VersionedInstaller.Name) -Encoding ASCII
+    Set-Content -Path (Join-Path $Dist "GXLightBrowser-Setup-x64.sha256.txt") `
+        -Value ($LatestHash + "  GXLightBrowser-Setup-x64.exe") -Encoding ASCII
 }
 
 Write-Host "Installer created in $Dist"

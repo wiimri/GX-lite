@@ -26,9 +26,9 @@ GX Light debe tratar cualquier dato de navegacion como sensible. El proyecto sig
 
 ## Actualizaciones
 
-`Menu > Buscar actualizaciones` consulta `update.json`. Si hay una version mayor, GX Light ofrece descargar
-el instalador permanente de GitHub Releases. El instalador actualiza los binarios en la misma carpeta y
-conserva el perfil ubicado en `%LOCALAPPDATA%\GXLightBrowser`.
+`Menu > Buscar actualizaciones` consulta `update.json`. Si hay una version mayor, GX Light descarga el
+instalador permanente de GitHub Releases, verifica su SHA-256 y solicita permiso para abrirlo. El
+instalador actualiza los binarios y conserva el perfil ubicado en `%LOCALAPPDATA%\GXLightBrowser`.
 
 Hasta implementar firma y verificacion criptografica completa, el usuario debe confirmar manualmente la
 instalacion y comprobar que la descarga proviene de `github.com/wiimri/GX-lite`.
