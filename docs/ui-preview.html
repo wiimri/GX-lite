@@ -70,6 +70,31 @@
       border-radius: 999px;
       background: #ff9f43;
     }
+    .island-bar {
+      width: 22px;
+      min-width: 22px;
+      padding: 0;
+      border: 1px solid #ff9f43;
+      background: #252833;
+      border-radius: 8px;
+      position: relative;
+    }
+    .island-bar::before {
+      content: "";
+      position: absolute;
+      width: 5px;
+      top: 5px;
+      bottom: 5px;
+      left: 8px;
+      background: #ff9f43;
+    }
+    .favicon {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: #ff334f;
+      flex: 0 0 auto;
+    }
     .tab.active { background: #353a49; border-color: #63e8ff; }
     .nav {
       display: grid;
@@ -157,8 +182,10 @@
     </aside>
     <header class="top">
       <section class="tabs">
-        <button class="tab active" data-tab="Google"><span>Google</span><span class="close">x</span></button>
-        <button class="tab island" data-tab="YouTube"><span>YouTube</span><span class="close">x</span></button>
+        <button class="tab active" data-tab="Google"><span class="favicon" style="background:#4c8bf5"></span><span>Google</span><span class="close">x</span></button>
+        <button class="island-bar" title="Isla con 2 pestanas"></button>
+        <button class="tab island island-member" data-tab="YouTube" hidden><span class="favicon"></span><span>[S] YouTube</span><span class="close">x</span></button>
+        <button class="tab island island-member" data-tab="Musica" hidden><span class="favicon" style="background:#8d66ff"></span><span>Musica</span><span class="close">x</span></button>
         <button class="tab" data-tab="Chrome Web Store"><span>Chrome Web Store</span><span class="close">x</span></button>
         <button class="tab add-tab" style="width:34px">+</button>
       </section>
@@ -229,6 +256,11 @@
     }
     document.querySelectorAll('.tab[data-tab]').forEach(wireTab);
     document.querySelector('.add-tab').addEventListener('click', () => makeTab('Nueva pestana'));
+    document.querySelector('.island-bar').addEventListener('click', (event) => {
+      const expanded = event.currentTarget.dataset.expanded === 'true';
+      event.currentTarget.dataset.expanded = String(!expanded);
+      document.querySelectorAll('.island-member').forEach((tab) => { tab.hidden = expanded; });
+    });
     document.querySelectorAll('.shortcut').forEach((button) => {
       button.addEventListener('auxclick', (event) => {
         if (event.button === 1) makeTab(button.dataset.title);

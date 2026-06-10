@@ -1,14 +1,14 @@
 {
-  "version": "1.11",
-  "releaseName": "GX Light Browser 1.11",
-  "publishedAt": "2026-06-09",
+  "version": "1.12",
+  "releaseName": "GX Light Browser 1.12",
+  "publishedAt": "2026-06-10",
   "downloadUrl": "https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "highlights": [
-    "El guardado de passwords se aplica al perfil persistente real de WebView2.",
-    "Nuevo interruptor visible para guardar passwords automaticamente.",
-    "Las sesiones usan un formato robusto que conserva URLs y titulos complejos.",
-    "Al iniciar, solo la pestana activa consume un WebView; las demas quedan suspendidas.",
-    "Nuevo interruptor Guardar pestanas al cerrar y cierre limpio del perfil."
+    "Passwords: GX Light pregunta antes de guardar y Windows cifra las credenciales.",
+    "Las pestanas suspendidas ahora usan el indicador corto [S].",
+    "Favicons reforzados y tamanos de pestana configurables.",
+    "Seleccion multiple con Ctrl o Shift e islas colapsables persistentes.",
+    "El menu puede buscar y descargar el instalador de la ultima version."
   ]
 }

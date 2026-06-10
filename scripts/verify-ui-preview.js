@@ -73,9 +73,15 @@ async function main() {
     });
 
     if (testCase.name === "desktop") {
+      await page.locator(".island-bar").click();
+      const visibleIslandMembers = await page.locator(".island-member:visible").count();
+      if (visibleIslandMembers !== 2) {
+        report.failures.push(`collapsed island did not expand: ${visibleIslandMembers}`);
+      }
+
       await page.locator('.shortcut[data-title="YouTube"]').click({ button: "middle" });
       const afterMiddle = await page.locator(".tab[data-tab]").count();
-      if (afterMiddle !== 4) {
+      if (afterMiddle !== 5) {
         report.failures.push(`middle-click shortcut did not create a tab: ${afterMiddle}`);
       }
 

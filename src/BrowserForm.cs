@@ -48,6 +48,7 @@ namespace GXLightBrowser
         private readonly List<PasswordVaultEntry> _passwordVault = new List<PasswordVaultEntry>();
         private readonly List<PlaylistEntry> _playlist = new List<PlaylistEntry>();
         private readonly Dictionary<int, Color> _islandColors = new Dictionary<int, Color>();
+        private readonly HashSet<int> _collapsedIslands = new HashSet<int>();
         private readonly GxControlSettings _gxControl = new GxControlSettings();
         private AppSettings _appSettings = new AppSettings();
         private UpdateManifest _updateManifest = UpdateManifest.LocalFallback();
@@ -61,6 +62,7 @@ namespace GXLightBrowser
         private DateTime _startedUtc = DateTime.UtcNow;
         private bool _restoringSession;
         private bool _cleaningUp;
+        private int _lastClickedTabIndex = -1;
 
         public BrowserForm()
         {
@@ -497,6 +499,10 @@ namespace GXLightBrowser
                 {
                     _islandColors[kv.Key] = kv.Value;
                 }
+                foreach (int islandId in session.CollapsedIslands)
+                {
+                    if (islandId > 0) _collapsedIslands.Add(islandId);
+                }
 
                 int maxIslandId = 0;
                 foreach (var tab in session.Tabs)
@@ -542,6 +548,15 @@ namespace GXLightBrowser
         private async Task ShowUpdateNoticeIfNeededAsync()
         {
             _updateManifest = await UpdateManifest.LoadLatestAsync();
+            Version installedVersion;
+            Version remoteVersion;
+            if (Version.TryParse(VersionInfo.CurrentVersion, out installedVersion) &&
+                Version.TryParse(_updateManifest.Version, out remoteVersion) &&
+                remoteVersion > installedVersion)
+            {
+                await CheckForUpdatesAsync(false);
+                return;
+            }
             if (string.Equals(_appSettings.LastSeenVersion, _updateManifest.Version, StringComparison.Ordinal))
             {
                 return;
@@ -1220,7 +1235,7 @@ namespace GXLightBrowser
             menu.Items.Add(bookmarks);
             menu.Items.Add("Extensions", null, async delegate { await NavigateExtensionsPageAsync(); });
             ToolStripMenuItem passwords = new ToolStripMenuItem("Passwords and autofill");
-            ToolStripMenuItem passwordAutosave = new ToolStripMenuItem("Guardar passwords automaticamente");
+            ToolStripMenuItem passwordAutosave = new ToolStripMenuItem("Preguntar antes de guardar passwords");
             passwordAutosave.Checked = _passwordSavingEnabled;
             passwordAutosave.Click += delegate { SetPasswordSavingEnabled(!_passwordSavingEnabled); };
             passwords.DropDownItems.Add(passwordAutosave);
@@ -1272,10 +1287,17 @@ namespace GXLightBrowser
             };
             appearance.DropDownItems.Add(showIcons);
             appearance.DropDownItems.Add(compactTabs);
+            ToolStripMenuItem tabSize = new ToolStripMenuItem("Tamano de pestanas");
+            AddTabWidthMenuItem(tabSize, "Automatico", 0);
+            AddTabWidthMenuItem(tabSize, "Pequeno", 92);
+            AddTabWidthMenuItem(tabSize, "Mediano", 140);
+            AddTabWidthMenuItem(tabSize, "Grande", 190);
+            appearance.DropDownItems.Add(tabSize);
             menu.Items.Add(appearance);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
             menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
+            menu.Items.Add("Buscar actualizaciones", null, async delegate { await CheckForUpdatesAsync(true); });
             menu.Items.Add("Update notes                                v" + _updateManifest.Version, null, delegate { NavigateActive(UpdatedUrl); });
             menu.Items.Add("Developer tools                             F12", null, delegate
             {
@@ -1287,6 +1309,51 @@ namespace GXLightBrowser
             });
             menu.Items.Add("Exit", null, delegate { Close(); });
             menu.Show(_menuButton, new Point(0, _menuButton.Height + 4));
+        }
+
+        private async Task CheckForUpdatesAsync(bool showCurrentMessage)
+        {
+            UpdateManifest latest = await UpdateManifest.LoadLatestAsync();
+            _updateManifest = latest;
+            Version installedVersion;
+            Version remoteVersion;
+            bool hasUpdate = Version.TryParse(VersionInfo.CurrentVersion, out installedVersion) &&
+                Version.TryParse(latest.Version, out remoteVersion) &&
+                remoteVersion > installedVersion;
+
+            if (!hasUpdate)
+            {
+                if (showCurrentMessage)
+                {
+                    MessageBox.Show(this, "GX Light " + VersionInfo.CurrentVersion + " ya es la version mas reciente publicada.",
+                        "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                return;
+            }
+
+            DialogResult result = MessageBox.Show(this,
+                "Hay una nueva version disponible: " + latest.Version + Environment.NewLine +
+                "El instalador actualizara GX Light y conservara tu perfil, passwords, favoritos y sesion." +
+                Environment.NewLine + Environment.NewLine + "¿Descargar el instalador ahora?",
+                "Actualizacion disponible", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (result == DialogResult.Yes && !string.IsNullOrWhiteSpace(latest.DownloadUrl))
+            {
+                Process.Start(latest.DownloadUrl);
+            }
+        }
+
+        private void AddTabWidthMenuItem(ToolStripMenuItem parent, string text, int width)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.Checked = _appSettings.TabWidth == width;
+            item.Click += delegate
+            {
+                _appSettings.TabWidth = width;
+                _appSettings.CompactIconTabs = false;
+                _appSettings.Save();
+                RebuildTabStrip();
+            };
+            parent.DropDownItems.Add(item);
         }
 
         private void SetPasswordSavingEnabled(bool enabled)
@@ -2095,6 +2162,14 @@ namespace GXLightBrowser
             {
                 TabPage page = _tabs.TabPages[i];
                 BrowserTab browserTab = page.Tag as BrowserTab;
+                if (browserTab != null && browserTab.IslandId > 0 && _collapsedIslands.Contains(browserTab.IslandId))
+                {
+                    if (IsFirstTabInIsland(i, browserTab.IslandId))
+                    {
+                        AddCollapsedIslandButton(browserTab.IslandId);
+                    }
+                    continue;
+                }
                 ChromeButton tab = new ChromeButton();
                 tab.Text = Trim(page.Text, Width < 900 ? 16 : 24);
                 tab.Width = width;
@@ -2125,13 +2200,21 @@ namespace GXLightBrowser
 
                     if (e.Button == MouseButtons.Left && index < _tabs.TabPages.Count)
                     {
+                        if ((ModifierKeys & Keys.Shift) == Keys.Shift && browserTab != null)
+                        {
+                            SelectTabRange(_lastClickedTabIndex < 0 ? index : _lastClickedTabIndex, index);
+                            RebuildTabStrip();
+                            return;
+                        }
                         if ((ModifierKeys & Keys.Control) == Keys.Control && browserTab != null)
                         {
                             browserTab.IsSelectedForIsland = !browserTab.IsSelectedForIsland;
+                            _lastClickedTabIndex = index;
                             RebuildTabStrip();
                             return;
                         }
 
+                        _lastClickedTabIndex = index;
                         _tabs.SelectedIndex = index;
                         return;
                     }
@@ -2151,6 +2234,67 @@ namespace GXLightBrowser
             _tabStrip.Controls.Add(_tabStripNewTab);
 
             _tabStrip.ResumeLayout();
+        }
+
+        private bool IsFirstTabInIsland(int index, int islandId)
+        {
+            for (int i = 0; i < index; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.IslandId == islandId) return false;
+            }
+            return true;
+        }
+
+        private void AddCollapsedIslandButton(int islandId)
+        {
+            int count = 0;
+            Color color = Theme.Accent;
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab member = _tabs.TabPages[i].Tag as BrowserTab;
+                if (member != null && member.IslandId == islandId)
+                {
+                    count++;
+                    color = GetIslandColor(member);
+                }
+            }
+
+            ChromeButton island = new ChromeButton();
+            island.Text = string.Empty;
+            island.Width = 22;
+            island.Height = 28;
+            island.Margin = new Padding(0, 1, 6, 3);
+            island.ShowIslandStripe = true;
+            island.IslandColor = color;
+            island.Accent = color;
+            island.MouseUp += delegate(object sender, MouseEventArgs e)
+            {
+                if (e.Button == MouseButtons.Left)
+                {
+                    _collapsedIslands.Remove(islandId);
+                    SaveSession();
+                    RebuildTabStrip();
+                }
+                else if (e.Button == MouseButtons.Right)
+                {
+                    ShowIslandContextMenu(islandId, island);
+                }
+            };
+            _tips.SetToolTip(island, "Isla con " + count + " pestanas. Clic para desplegar.");
+            _tabStrip.Controls.Add(island);
+        }
+
+        private void SelectTabRange(int from, int to)
+        {
+            int start = Math.Max(0, Math.Min(from, to));
+            int end = Math.Min(_tabs.TabPages.Count - 1, Math.Max(from, to));
+            for (int i = start; i <= end; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null) tab.IsSelectedForIsland = true;
+            }
+            _lastClickedTabIndex = to;
         }
 
         private void ShowTabContextMenu(TabPage page, Control owner)
@@ -2173,6 +2317,12 @@ namespace GXLightBrowser
                 RebuildTabStrip();
             });
             menu.Items.Add("Clear tab selection", null, delegate { ClearTabSelection(); });
+            if (tab.IslandId > 0)
+            {
+                menu.Items.Add(_collapsedIslands.Contains(tab.IslandId) ? "Expand tab island" : "Collapse tab island", null,
+                    delegate { ToggleIslandCollapsed(tab.IslandId); });
+                menu.Items.Add("Remove tabs from island", null, delegate { DissolveIsland(tab.IslandId); });
+            }
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("Reload selected tabs", null, async delegate { await ReloadSelectedTabsAsync(tab); });
             menu.Items.Add("Copy page addresses", null, delegate { CopySelectedTabAddresses(tab); });
@@ -2187,6 +2337,37 @@ namespace GXLightBrowser
             menu.Items.Add("Close selected tabs                          Ctrl+W", null, delegate { CloseSelectedTabs(tab); });
             menu.Items.Add("Close tabs to the right", null, delegate { CloseTabsToRight(page); });
             menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
+        private void ShowIslandContextMenu(int islandId, Control owner)
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+            menu.Items.Add("Expand tab island", null, delegate { ToggleIslandCollapsed(islandId); });
+            menu.Items.Add("Remove tabs from island", null, delegate { DissolveIsland(islandId); });
+            menu.Show(owner, new Point(0, owner.Height + 4));
+        }
+
+        private void ToggleIslandCollapsed(int islandId)
+        {
+            if (!_collapsedIslands.Add(islandId)) _collapsedIslands.Remove(islandId);
+            SaveSession();
+            RebuildTabStrip();
+        }
+
+        private void DissolveIsland(int islandId)
+        {
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.IslandId == islandId) tab.IslandId = 0;
+            }
+            _collapsedIslands.Remove(islandId);
+            _islandColors.Remove(islandId);
+            SaveSession();
+            RebuildTabStrip();
         }
 
         private List<BrowserTab> SelectedTabsOr(BrowserTab fallback)
@@ -2226,6 +2407,8 @@ namespace GXLightBrowser
                 selected[i].IsSelectedForIsland = false;
             }
             _activeIslandId = islandId;
+            _collapsedIslands.Add(islandId);
+            SaveSession();
             RebuildTabStrip();
         }
 
@@ -2530,7 +2713,7 @@ namespace GXLightBrowser
 
             Logger.Info("Suspending tab: " + tab.Page.Text);
             tab.SuspendedUrl = tab.WebView.Source == null || tab.WebView.Source.ToString() == "about:blank" ? HomeUrl : tab.WebView.Source.ToString();
-            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "");
+            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "").Replace("[S] ", "");
             
             UnsubscribeWebViewEvents(tab.WebView);
 
@@ -2540,7 +2723,7 @@ namespace GXLightBrowser
             tab.IsSuspended = true;
 
             SetupSuspensionPlaceholder(tab);
-            tab.Page.Text = "[Suspended] " + Trim(tab.SuspendedTitle, 18);
+            tab.Page.Text = "[S] " + Trim(tab.SuspendedTitle, 18);
             RebuildTabStrip();
             SaveSession();
         }
@@ -2575,6 +2758,10 @@ namespace GXLightBrowser
             if (_appSettings.CompactIconTabs)
             {
                 return 38;
+            }
+            if (_appSettings.TabWidth >= 80)
+            {
+                return _appSettings.TabWidth;
             }
 
             int available = Math.Max(260, _tabStrip.Width - 12);
@@ -2708,6 +2895,10 @@ namespace GXLightBrowser
             if (title.StartsWith("[Suspended] ", StringComparison.Ordinal))
             {
                 title = title.Substring("[Suspended] ".Length);
+            }
+            if (title.StartsWith("[S] ", StringComparison.Ordinal))
+            {
+                title = title.Substring("[S] ".Length);
             }
             if (title.StartsWith("[Pinned] ", StringComparison.Ordinal))
             {
@@ -3319,11 +3510,12 @@ namespace GXLightBrowser
         private string PasswordsHtml()
         {
             StringBuilder body = new StringBuilder();
-            body.Append("<p>Password autosave and general autofill are <b>")
-                .Append(_passwordSavingEnabled ? "enabled" : "disabled")
-                .Append("</b> in WebView2 settings and the persistent profile.</p>");
-            body.Append("<p>WebView2 manages its native saved passwords inside the persistent GX Light profile. GX Light also has a local DPAPI-protected CSV vault for import/export.</p>");
-            body.Append("<p>Vault entries imported: <b>").Append(_passwordVault.Count).Append("</b>. Use Menu > Passwords and autofill to import/export CSV.</p>");
+            body.Append("<p>Preguntar antes de guardar passwords: <b>")
+                .Append(_passwordSavingEnabled ? "activado" : "desactivado")
+                .Append("</b>.</p>");
+            body.Append("<p>GX Light nunca guarda una credencial al escribirla. WebView2 muestra su aviso nativo despues de iniciar sesion y solo la conserva cuando eliges guardar.</p>");
+            body.Append("<p>Las credenciales nativas quedan cifradas por Windows dentro del perfil persistente. La boveda de importacion/exportacion tambien usa Windows DPAPI para el usuario actual.</p>");
+            body.Append("<p>Entradas importadas en la boveda: <b>").Append(_passwordVault.Count).Append("</b>. Usa Menu &gt; Passwords and autofill para importar o exportar CSV.</p>");
 
             if (_passwordVault.Count == 0)
             {
@@ -3408,7 +3600,7 @@ namespace GXLightBrowser
             string links = string.Empty;
             if (!string.IsNullOrWhiteSpace(manifest.DownloadUrl))
             {
-                links += "<a class='link' data-open-url='" + EscapeHtml(manifest.DownloadUrl) + "' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Ver release</a>";
+                links += "<a class='link' data-open-url='" + EscapeHtml(manifest.DownloadUrl) + "' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Descargar actualizacion</a>";
             }
             if (!string.IsNullOrWhiteSpace(manifest.SourceUrl))
             {
@@ -3477,6 +3669,11 @@ namespace GXLightBrowser
                 core.ExecuteScriptAsync("window.__gxLightRunYouTubeShields && window.__gxLightRunYouTubeShields();");
             }
             AddHistoryEntry(page, web);
+            BrowserTab completedTab = page.Tag as BrowserTab;
+            if (completedTab != null)
+            {
+                Task ignored = RefreshFaviconAsync(core, completedTab);
+            }
             SyncAddress();
             UpdateStatus();
         }
@@ -3500,12 +3697,12 @@ namespace GXLightBrowser
             CoreWebView2 core = sender as CoreWebView2;
             WebView2 web = WebViewForCore(core);
             TabPage page = web == null ? null : PageForWebView(web);
-            BrowserTab tab = page == null ? null : page.Tag as BrowserTab;
-            if (core == null || tab == null)
-            {
-                return;
-            }
+            await RefreshFaviconAsync(core, page == null ? null : page.Tag as BrowserTab);
+        }
 
+        private async Task RefreshFaviconAsync(CoreWebView2 core, BrowserTab tab)
+        {
+            if (core == null || tab == null) return;
             try
             {
                 using (Stream stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
@@ -3517,8 +3714,9 @@ namespace GXLightBrowser
                 }
                 RebuildTabStrip();
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Info("Favicon unavailable: " + ex.Message);
             }
         }
 
@@ -3591,7 +3789,7 @@ namespace GXLightBrowser
             }
 
             tab.SuspendedUrl = tab.WebView.Source == null ? HomeUrl : tab.WebView.Source.ToString();
-            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "");
+            tab.SuspendedTitle = tab.Page.Text.Replace("[Crashed] ", "").Replace("[Suspended] ", "").Replace("[S] ", "");
 
             UnsubscribeWebViewEvents(tab.WebView);
 
@@ -3672,7 +3870,7 @@ namespace GXLightBrowser
 
         private BrowserTab CreateSuspendedTab(string url, string title, int islandId)
         {
-            TabPage page = new TabPage("[Suspended] " + Trim(title, 18));
+            TabPage page = new TabPage("[S] " + Trim(title, 18));
             page.BackColor = Theme.Window;
 
             BrowserTab tab = new BrowserTab(page, null);
@@ -3723,7 +3921,7 @@ namespace GXLightBrowser
                     }
                 }
 
-                SessionManager.SaveSession(maximized, x, y, width, height, activeIndex, _islandColors, tabsList);
+                SessionManager.SaveSession(maximized, x, y, width, height, activeIndex, _islandColors, _collapsedIslands, tabsList);
             }
             catch (Exception ex)
             {

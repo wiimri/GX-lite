@@ -4,8 +4,8 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.11`
-- Fecha: `2026-06-09`
+- Version publicada: `1.12`
+- Fecha: `2026-06-10`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
 
@@ -20,6 +20,29 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.12 - Islas colapsables, favicons y actualizaciones visibles
+
+Fecha: `2026-06-10`
+
+Cambios:
+
+- El ajuste de passwords ahora se llama `Preguntar antes de guardar passwords` y explica que solo se guarda despues de aceptar el popup nativo.
+- Las credenciales nativas quedan bajo la proteccion del perfil de Windows y la boveda importada conserva DPAPI.
+- Las pestanas suspendidas usan el indicador corto `[S]`.
+- Los favicons se vuelven a consultar al completar cada navegacion.
+- Se agregaron tamanos de pestana automatico, pequeno, mediano y grande.
+- `Ctrl+clic` selecciona pestanas individuales y `Shift+clic` selecciona rangos.
+- Las islas nuevas se colapsan en una barra vertical y pueden desplegarse, colapsarse o disolverse.
+- El estado colapsado de las islas se conserva entre sesiones.
+- `Menu > Buscar actualizaciones` consulta GitHub y ofrece descargar el instalador permanente.
+- Se agrego `docs/SEGURIDAD.md` con reglas actuales y prioridades de seguridad.
+
+Pruebas:
+
+- Compilacion de .NET Framework completada.
+- Pruebas Playwright de UI y aislamiento de YouTube ejecutadas.
+- Prueba del Privacy Firewall ejecutada.
 
 ## v1.11 - Passwords persistentes y restauracion ligera de sesion
 

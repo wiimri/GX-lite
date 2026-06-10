@@ -15,6 +15,7 @@ namespace GXLightBrowser
             int x, int y, int width, int height,
             int activeIndex,
             Dictionary<int, Color> islandColors,
+            HashSet<int> collapsedIslands,
             List<BrowserTab> tabs)
         {
             try
@@ -27,6 +28,10 @@ namespace GXLightBrowser
                 foreach (KeyValuePair<int, Color> kv in islandColors)
                 {
                     sb.AppendLine(string.Format("IslandColor:{0}|{1},{2},{3}", kv.Key, kv.Value.R, kv.Value.G, kv.Value.B));
+                }
+                foreach (int islandId in collapsedIslands)
+                {
+                    sb.AppendLine("CollapsedIsland:" + islandId);
                 }
 
                 sb.AppendLine("FormatVersion:2");
@@ -96,6 +101,9 @@ namespace GXLightBrowser
                                     data.IslandColors[id] = color;
                                 }
                             }
+                            break;
+                        case "CollapsedIsland":
+                            data.CollapsedIslands.Add(ParseInt(val, 0));
                             break;
                         case "Tab2":
                             string[] t2 = val.Split('|');
@@ -186,6 +194,7 @@ namespace GXLightBrowser
         public int Height { get; set; }
         public int ActiveIndex { get; set; }
         public Dictionary<int, Color> IslandColors { get; set; }
+        public HashSet<int> CollapsedIslands { get; set; }
         public List<TabData> Tabs { get; set; }
 
         public SessionData()
@@ -193,6 +202,7 @@ namespace GXLightBrowser
             X = -1; Y = -1; Width = 1280; Height = 780;
             ActiveIndex = 0;
             IslandColors = new Dictionary<int, Color>();
+            CollapsedIslands = new HashSet<int>();
             Tabs = new List<TabData>();
         }
     }

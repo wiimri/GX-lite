@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.11`
+Version actual: `1.12`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -26,9 +26,10 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Menu principal inspirado en Opera/Brave con accesos a pestanas, historial, descargas, extensiones, passwords, memoria, shields, settings y herramientas de desarrollador.
 - Pagina de historial de sesion.
 - Pagina de descargas de sesion.
-- Autosave y autofill de passwords de WebView2 habilitados.
-- Tab islands para agrupar pestanas.
-- Menu contextual de tab islands: seleccionar varias pestanas, crear una isla coloreada, duplicar, recargar, copiar URLs y cerrar seleccionadas.
+- Pregunta nativa antes de guardar passwords y autofill de WebView2 habilitado.
+- Tab islands colapsables y persistentes para agrupar pestanas.
+- Seleccion multiple de pestanas con `Ctrl+clic` o `Shift+clic`.
+- Menu contextual de tab islands: crear, colapsar, desplegar, disolver, duplicar, recargar, copiar URLs y cerrar seleccionadas.
 - Suspension real de pestanas inactivas para liberar WebView2 y memoria.
 - Monitor visible de memoria y GX Control configurable.
 - Pestana de novedades que aparece solo una vez por version instalada.
@@ -36,9 +37,9 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Importacion/exportacion de bookmarks en HTML compatible con navegadores.
 - Gestor de bookmarks con carpetas, busqueda, seleccion multiple y eliminacion masiva.
 - Importacion/exportacion de passwords CSV mediante una boveda local protegida con Windows DPAPI.
-- Guardado nativo de passwords habilitado tanto en WebView2 Settings como en el perfil persistente.
+- Guardado nativo de passwords solo despues de aceptar el aviso de WebView2; Windows protege las credenciales del perfil.
 - Restauracion de sesion optimizada: una pestana activa y las demas suspendidas para reducir RAM.
-- Favicons por pagina y modo opcional de pestanas compactas cuadradas.
+- Favicons por pagina, pestanas compactas cuadradas y tamanos pequeno, mediano, grande o automatico.
 - Playlist local para guardar, volver a abrir y eliminar paginas multimedia.
 - Icono propio integrado en la ventana y el ejecutable.
 
@@ -47,7 +48,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.11`
+- linea de mejora actual: `1.12`
 - cada mejora o correccion del navegador sube la version menor: `1.12`, `1.13`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
@@ -67,7 +68,12 @@ El historico completo de cambios esta en `CHANGELOG.md`:
 https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md
 ```
 
-Importante: cambiar `update.json` muestra novedades o avisa que hay una version disponible, pero no cambia magicamente el binario instalado. Para que el usuario reciba codigo nuevo sin hacerlo manualmente, el siguiente paso es crear un actualizador binario que descargue un release firmado y reemplace el `.exe`.
+`Menu > Buscar actualizaciones` compara la version instalada con `update.json`. Si hay una version mayor,
+ofrece descargar el instalador permanente. Al ejecutarlo, actualiza los binarios sobre la instalacion
+existente y conserva perfil, passwords, favoritos y sesion.
+
+Por seguridad, GX Light todavia no instala silenciosamente: la descarga y ejecucion deben ser confirmadas.
+La siguiente mejora critica es firmar el instalador y verificar criptograficamente su manifiesto y SHA-256.
 
 Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni la experiencia dentro del navegador.
 
@@ -147,11 +153,11 @@ La barra de favoritos queda visible bajo la barra de navegacion.
 
 ## Passwords
 
-El autosave/autofill nativo de WebView2 esta habilitado para el perfil de la app en `%LOCALAPPDATA%\GXLightBrowser\Profile`.
+El aviso nativo para guardar passwords y el autofill de WebView2 estan habilitados para el perfil de la app en `%LOCALAPPDATA%\GXLightBrowser\Profile`.
 
-`Menu > Passwords and autofill > Guardar passwords automaticamente` permite comprobar o cambiar esta
-preferencia. GX Light la aplica al perfil persistente de WebView2 y realiza un cierre limpio para que el
-runtime consolide sus datos.
+`Menu > Passwords and autofill > Preguntar antes de guardar passwords` permite comprobar o cambiar esta
+preferencia. GX Light nunca captura passwords mediante JavaScript ni las guarda al escribirlas: WebView2
+solo las conserva despues de que el usuario acepta su popup nativo.
 
 GX Light tambien incluye una boveda local para importar/exportar passwords:
 
@@ -160,6 +166,8 @@ GX Light tambien incluye una boveda local para importar/exportar passwords:
 - al exportar se genera un CSV normal en texto visible, asi que hay que tratarlo con cuidado
 
 Importante: WebView2 no expone una API publica para inyectar passwords importadas directamente en su gestor nativo. La boveda de GX Light sirve como companera de import/export; WebView2 sigue manejando el guardado y autofill normal durante la navegacion.
+
+La hoja de ruta y recomendaciones estan documentadas en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 
 ## Bloqueo de anuncios
 
