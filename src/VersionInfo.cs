@@ -2,18 +2,18 @@ namespace GXLightBrowser
 {
     internal static class VersionInfo
     {
-        public const string CurrentVersion = "1.10";
-        public const string ReleaseName = "GX Light Browser 1.10";
+        public const string CurrentVersion = "1.11";
+        public const string ReleaseName = "GX Light Browser 1.11";
 
         public static string[] Highlights()
         {
             return new string[]
             {
-                "Nuevo modo de compatibilidad automatico para Crunchyroll.",
-                "Shields pausa recursos para Crunchyroll sin permitir ventanas emergentes automaticas.",
-                "El host de navegacion se usa desde el primer recurso aunque WebView2 siga en about:blank.",
-                "Los recursos y popups bloqueados ahora se contabilizan por separado.",
-                "Se agrego un enlace permanente al instalador mas reciente."
+                "El guardado de passwords se aplica al perfil persistente real de WebView2.",
+                "Nuevo interruptor visible para guardar passwords automaticamente.",
+                "Las sesiones usan un formato robusto que conserva URLs y titulos complejos.",
+                "Al iniciar, solo la pestana activa consume un WebView; las demas quedan suspendidas.",
+                "Nuevo interruptor Guardar pestanas al cerrar y cierre limpio del perfil."
             };
         }
     }

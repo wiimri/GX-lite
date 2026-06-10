@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.10`
+- Version publicada: `1.11`
 - Fecha: `2026-06-09`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,25 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.11 - Passwords persistentes y restauracion ligera de sesion
+
+Fecha: `2026-06-09`
+
+Cambios:
+
+- El guardado de passwords se activa tanto en `CoreWebView2.Settings` como en `CoreWebView2.Profile`.
+- Nuevo interruptor `Guardar passwords automaticamente` dentro del menu de passwords.
+- El cierre de GX Light guarda configuración y sesión, detiene tareas periódicas y dispone limpiamente los WebViews.
+- `session.dat` usa formato v2 con URL y título codificados, evitando fallos por caracteres como `|`.
+- Nuevo interruptor `Guardar pestanas al cerrar`.
+- Al restaurar una sesión, solamente la pestaña seleccionada crea un WebView; todas las demás quedan suspendidas hasta abrirlas.
+
+Pruebas:
+
+- El log confirmó `Password autosave=True` sobre el perfil persistente de GX Light.
+- Una prueba controlada reinició tres pestañas y conservó URLs/títulos que contenían separadores.
+- La sesión y configuración originales fueron respaldadas y restauradas después de la prueba.
 
 ## v1.10 - Modo de compatibilidad Crunchyroll
 

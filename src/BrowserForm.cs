@@ -59,6 +59,8 @@ namespace GXLightBrowser
         private int _nextIslandId = 1;
         private int _activeIslandId;
         private DateTime _startedUtc = DateTime.UtcNow;
+        private bool _restoringSession;
+        private bool _cleaningUp;
 
         public BrowserForm()
         {
@@ -74,7 +76,8 @@ namespace GXLightBrowser
 
             BuildLayout();
             SizeChanged += delegate { ApplyResponsiveMode(); };
-            FormClosing += delegate { SaveSession(); };
+            FormClosing += BrowserFormClosing;
+            FormClosed += delegate { DisposeWebViewsForShutdown(); };
             Load += async delegate
             {
                 NativeChrome.ApplyDarkFrame(this);
@@ -475,9 +478,10 @@ namespace GXLightBrowser
             }
 
             // Restaurar sesión previa si existe
-            SessionData session = SessionManager.LoadSession();
+            SessionData session = _appSettings.RestorePreviousSession ? SessionManager.LoadSession() : null;
             if (session != null && session.Tabs.Count > 0)
             {
+                _restoringSession = true;
                 Logger.Info("Restoring session with " + session.Tabs.Count + " tabs.");
                 if (session.X >= 0 && session.Y >= 0)
                 {
@@ -504,7 +508,7 @@ namespace GXLightBrowser
                 for (int i = 0; i < session.Tabs.Count; i++)
                 {
                     var tabData = session.Tabs[i];
-                    if (tabData.IsSuspended)
+                    if (i != session.ActiveIndex)
                     {
                         CreateSuspendedTab(tabData.Url, tabData.Title, tabData.IslandId);
                     }
@@ -521,6 +525,8 @@ namespace GXLightBrowser
 
                 int targetIndex = Math.Min(session.ActiveIndex, _tabs.TabPages.Count - 1);
                 _tabs.SelectedIndex = Math.Max(0, targetIndex);
+                _restoringSession = false;
+                SaveSession();
             }
             else
             {
@@ -588,7 +594,10 @@ namespace GXLightBrowser
             web.CoreWebView2.Settings.IsZoomControlEnabled = true;
             web.CoreWebView2.Settings.IsPasswordAutosaveEnabled = _passwordSavingEnabled;
             web.CoreWebView2.Settings.IsGeneralAutofillEnabled = _passwordSavingEnabled;
+            web.CoreWebView2.Profile.IsPasswordAutosaveEnabled = _passwordSavingEnabled;
             web.CoreWebView2.Profile.PreferredTrackingPreventionLevel = CoreWebView2TrackingPreventionLevel.Balanced;
+            Logger.Info("Password autosave=" + web.CoreWebView2.Profile.IsPasswordAutosaveEnabled +
+                " profile=" + web.CoreWebView2.Profile.ProfilePath);
             web.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
             web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YouTubeShieldsScript());
             web.CoreWebView2.WebResourceRequested += WebResourceRequested;
@@ -1211,6 +1220,11 @@ namespace GXLightBrowser
             menu.Items.Add(bookmarks);
             menu.Items.Add("Extensions", null, async delegate { await NavigateExtensionsPageAsync(); });
             ToolStripMenuItem passwords = new ToolStripMenuItem("Passwords and autofill");
+            ToolStripMenuItem passwordAutosave = new ToolStripMenuItem("Guardar passwords automaticamente");
+            passwordAutosave.Checked = _passwordSavingEnabled;
+            passwordAutosave.Click += delegate { SetPasswordSavingEnabled(!_passwordSavingEnabled); };
+            passwords.DropDownItems.Add(passwordAutosave);
+            passwords.DropDownItems.Add(new ToolStripSeparator());
             passwords.DropDownItems.Add("Password settings", null, delegate { NavigateInternal("passwords"); });
             passwords.DropDownItems.Add("Import passwords CSV...", null, delegate { ImportPasswords(); });
             passwords.DropDownItems.Add("Export passwords CSV...", null, delegate { ExportPasswords(); });
@@ -1221,6 +1235,16 @@ namespace GXLightBrowser
             menu.Items.Add("GX Control / limiters", null, delegate { ShowGxControl(); });
             menu.Items.Add("Memory monitor", null, delegate { NavigateInternal("memory"); });
             menu.Items.Add("Shields / Privacy Firewall", null, delegate { NavigateInternal("shields"); });
+            ToolStripMenuItem restoreSession = new ToolStripMenuItem("Guardar pestanas al cerrar");
+            restoreSession.Checked = _appSettings.RestorePreviousSession;
+            restoreSession.Click += delegate
+            {
+                _appSettings.RestorePreviousSession = !_appSettings.RestorePreviousSession;
+                _appSettings.Save();
+                if (_appSettings.RestorePreviousSession) SaveSession();
+                else SessionManager.DeleteSession();
+            };
+            menu.Items.Add(restoreSession);
             ToolStripMenuItem appearance = new ToolStripMenuItem("Tab appearance");
             ToolStripMenuItem showIcons = new ToolStripMenuItem("Ver iconos de las paginas");
             showIcons.Checked = _appSettings.ShowPageIcons;
@@ -1263,6 +1287,28 @@ namespace GXLightBrowser
             });
             menu.Items.Add("Exit", null, delegate { Close(); });
             menu.Show(_menuButton, new Point(0, _menuButton.Height + 4));
+        }
+
+        private void SetPasswordSavingEnabled(bool enabled)
+        {
+            _passwordSavingEnabled = enabled;
+            _appSettings.PasswordSavingEnabled = enabled;
+            _appSettings.Save();
+
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab == null || tab.WebView == null || tab.WebView.CoreWebView2 == null)
+                {
+                    continue;
+                }
+
+                tab.WebView.CoreWebView2.Settings.IsPasswordAutosaveEnabled = enabled;
+                tab.WebView.CoreWebView2.Settings.IsGeneralAutofillEnabled = enabled;
+                tab.WebView.CoreWebView2.Profile.IsPasswordAutosaveEnabled = enabled;
+            }
+
+            NavigateInternal("passwords");
         }
 
         private void ShowGxControl()
@@ -3275,8 +3321,8 @@ namespace GXLightBrowser
             StringBuilder body = new StringBuilder();
             body.Append("<p>Password autosave and general autofill are <b>")
                 .Append(_passwordSavingEnabled ? "enabled" : "disabled")
-                .Append("</b> in WebView2 settings.</p>");
-            body.Append("<p>WebView2 manages its native saved passwords inside the Edge profile. GX Light also has a local DPAPI-protected CSV vault for import/export.</p>");
+                .Append("</b> in WebView2 settings and the persistent profile.</p>");
+            body.Append("<p>WebView2 manages its native saved passwords inside the persistent GX Light profile. GX Light also has a local DPAPI-protected CSV vault for import/export.</p>");
             body.Append("<p>Vault entries imported: <b>").Append(_passwordVault.Count).Append("</b>. Use Menu > Passwords and autofill to import/export CSV.</p>");
 
             if (_passwordVault.Count == 0)
@@ -3639,12 +3685,20 @@ namespace GXLightBrowser
             SetupSuspensionPlaceholder(tab);
             _tabs.TabPages.Add(page);
             RebuildTabStrip();
-            SaveSession();
+            if (!_restoringSession)
+            {
+                SaveSession();
+            }
             return tab;
         }
 
         private void SaveSession()
         {
+            if (_restoringSession || !_appSettings.RestorePreviousSession)
+            {
+                return;
+            }
+
             try
             {
                 bool maximized = WindowState == FormWindowState.Maximized;
@@ -3674,6 +3728,50 @@ namespace GXLightBrowser
             catch (Exception ex)
             {
                 Logger.Error("Failed to save session from form: " + ex.Message);
+            }
+        }
+
+        private void BrowserFormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_cleaningUp)
+            {
+                return;
+            }
+
+            _cleaningUp = true;
+            _memoryTimer.Stop();
+            if (_appSettings.RestorePreviousSession)
+            {
+                SaveSession();
+            }
+            else
+            {
+                SessionManager.DeleteSession();
+            }
+            _appSettings.PasswordSavingEnabled = _passwordSavingEnabled;
+            _appSettings.Save();
+        }
+
+        private void DisposeWebViewsForShutdown()
+        {
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab == null || tab.WebView == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    UnsubscribeWebViewEvents(tab.WebView);
+                    tab.WebView.Dispose();
+                    tab.WebView = null;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Failed to close WebView cleanly: " + ex.Message);
+                }
             }
         }
 

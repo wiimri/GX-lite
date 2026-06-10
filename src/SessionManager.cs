@@ -29,11 +29,13 @@ namespace GXLightBrowser
                     sb.AppendLine(string.Format("IslandColor:{0}|{1},{2},{3}", kv.Key, kv.Value.R, kv.Value.G, kv.Value.B));
                 }
 
+                sb.AppendLine("FormatVersion:2");
                 foreach (var tab in tabs)
                 {
                     string url = tab.IsSuspended ? tab.SuspendedUrl : (tab.WebView != null && tab.WebView.Source != null ? tab.WebView.Source.ToString() : "gxlight://home");
                     string title = tab.IsSuspended ? tab.SuspendedTitle : tab.Page.Text;
-                    sb.AppendLine(string.Format("Tab:{0}|{1}|{2}|{3}", url, title, tab.IslandId, tab.IsSuspended));
+                    sb.AppendLine(string.Format("Tab2:{0}|{1}|{2}|{3}",
+                        Encode(url), Encode(title), tab.IslandId, tab.IsSuspended));
                 }
 
                 AppPaths.Ensure();
@@ -95,6 +97,18 @@ namespace GXLightBrowser
                                 }
                             }
                             break;
+                        case "Tab2":
+                            string[] t2 = val.Split('|');
+                            if (t2.Length == 4)
+                            {
+                                TabData td2 = new TabData();
+                                td2.Url = Decode(t2[0]);
+                                td2.Title = Decode(t2[1]);
+                                td2.IslandId = ParseInt(t2[2], 0);
+                                td2.IsSuspended = ParseBool(t2[3], true);
+                                data.Tabs.Add(td2);
+                            }
+                            break;
                         case "Tab":
                             string[] t = val.Split('|');
                             if (t.Length >= 4)
@@ -102,8 +116,8 @@ namespace GXLightBrowser
                                 TabData td = new TabData();
                                 td.Url = t[0];
                                 td.Title = t[1];
-                                td.IslandId = int.Parse(t[2]);
-                                td.IsSuspended = bool.Parse(t[3]);
+                                td.IslandId = ParseInt(t[t.Length - 2], 0);
+                                td.IsSuspended = ParseBool(t[t.Length - 1], true);
                                 data.Tabs.Add(td);
                             }
                             break;
@@ -116,6 +130,50 @@ namespace GXLightBrowser
                 Logger.Error("Failed to load session: " + ex.Message);
                 return null;
             }
+        }
+
+        public static void DeleteSession()
+        {
+            try
+            {
+                if (File.Exists(SessionFile))
+                {
+                    File.Delete(SessionFile);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to delete session: " + ex.Message);
+            }
+        }
+
+        private static string Encode(string value)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(value ?? string.Empty));
+        }
+
+        private static string Decode(string value)
+        {
+            try
+            {
+                return Encoding.UTF8.GetString(Convert.FromBase64String(value ?? string.Empty));
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static int ParseInt(string value, int fallback)
+        {
+            int parsed;
+            return int.TryParse(value, out parsed) ? parsed : fallback;
+        }
+
+        private static bool ParseBool(string value, bool fallback)
+        {
+            bool parsed;
+            return bool.TryParse(value, out parsed) ? parsed : fallback;
         }
     }
 

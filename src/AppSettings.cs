@@ -27,6 +27,7 @@ namespace GXLightBrowser
         public int MaxActiveTabs { get; set; }
         public bool ShowPageIcons { get; set; }
         public bool CompactIconTabs { get; set; }
+        public bool RestorePreviousSession { get; set; }
 
         public AppSettings()
         {
@@ -49,6 +50,7 @@ namespace GXLightBrowser
             MaxActiveTabs = 5;
             ShowPageIcons = true;
             CompactIconTabs = false;
+            RestorePreviousSession = true;
         }
 
         public static AppSettings Load()
@@ -104,6 +106,8 @@ namespace GXLightBrowser
                         settings.ShowPageIcons = bool.Parse(value);
                     else if (string.Equals(key, "CompactIconTabs", StringComparison.OrdinalIgnoreCase))
                         settings.CompactIconTabs = bool.Parse(value);
+                    else if (string.Equals(key, "RestorePreviousSession", StringComparison.OrdinalIgnoreCase))
+                        settings.RestorePreviousSession = bool.Parse(value);
                 }
             }
             catch (Exception ex)
@@ -137,6 +141,7 @@ namespace GXLightBrowser
                 builder.Append("MaxActiveTabs=").Append(MaxActiveTabs).AppendLine();
                 builder.Append("ShowPageIcons=").Append(ShowPageIcons).AppendLine();
                 builder.Append("CompactIconTabs=").Append(CompactIconTabs).AppendLine();
+                builder.Append("RestorePreviousSession=").Append(RestorePreviousSession).AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }

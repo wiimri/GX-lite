@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.10`
+Version actual: `1.11`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -36,6 +36,8 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Importacion/exportacion de bookmarks en HTML compatible con navegadores.
 - Gestor de bookmarks con carpetas, busqueda, seleccion multiple y eliminacion masiva.
 - Importacion/exportacion de passwords CSV mediante una boveda local protegida con Windows DPAPI.
+- Guardado nativo de passwords habilitado tanto en WebView2 Settings como en el perfil persistente.
+- Restauracion de sesion optimizada: una pestana activa y las demas suspendidas para reducir RAM.
 - Favicons por pagina y modo opcional de pestanas compactas cuadradas.
 - Playlist local para guardar, volver a abrir y eliminar paginas multimedia.
 - Icono propio integrado en la ventana y el ejecutable.
@@ -45,8 +47,8 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.10`
-- cada mejora o correccion del navegador sube la version menor: `1.11`, `1.12`, ... `1.19`
+- linea de mejora actual: `1.11`
+- cada mejora o correccion del navegador sube la version menor: `1.12`, `1.13`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
@@ -147,6 +149,10 @@ La barra de favoritos queda visible bajo la barra de navegacion.
 
 El autosave/autofill nativo de WebView2 esta habilitado para el perfil de la app en `%LOCALAPPDATA%\GXLightBrowser\Profile`.
 
+`Menu > Passwords and autofill > Guardar passwords automaticamente` permite comprobar o cambiar esta
+preferencia. GX Light la aplica al perfil persistente de WebView2 y realiza un cierre limpio para que el
+runtime consolide sus datos.
+
 GX Light tambien incluye una boveda local para importar/exportar passwords:
 
 - formato CSV: `name,url,username,password,note`
@@ -214,6 +220,8 @@ La prueba de firewall revisa bloqueo de trackers y limpieza de parametros de seg
 - `GX 0.8G` abre GX Control con RAM limiter, hard limit, hot tabs killer, CPU policy y network policy.
 - Las pestanas inactivas pasan a bajo consumo.
 - `Menu > Suspend inactive tabs now` descarta WebViews inactivos y mantiene la pestana visible.
+- `Menu > Guardar pestanas al cerrar` conserva la sesion. Al reiniciar, solo la pestana activa crea un
+  WebView; las demas se muestran suspendidas hasta seleccionarlas.
 
 ## Auditoria
 
