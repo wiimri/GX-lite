@@ -5,3 +5,4 @@ packages/
 node_modules/
 .npm-cache/
 screenshots/desktop-after-polish.png
+firewall_rules.txt
