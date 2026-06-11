@@ -145,13 +145,13 @@ namespace GXLightBrowser
                 TextFormatFlags.NoPadding;
             if (!IconOnly)
             {
-                TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, ForeColor, flags);
+                TextRenderer.DrawText(pevent.Graphics, Text, Font, textRect, Theme.Text, flags);
             }
 
             if (ShowCloseGlyph)
             {
                 Rectangle close = CloseGlyphBounds();
-                using (Pen pen = new Pen(_hover ? Color.White : Theme.Muted, 1.7f))
+                using (Pen pen = new Pen(_hover ? Theme.Accent : Theme.Muted, 1.7f))
                 {
                     pevent.Graphics.DrawLine(pen, close.Left + 5, close.Top + 5, close.Right - 5, close.Bottom - 5);
                     pevent.Graphics.DrawLine(pen, close.Right - 5, close.Top + 5, close.Left + 5, close.Bottom - 5);

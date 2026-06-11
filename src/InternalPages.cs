@@ -74,13 +74,49 @@ namespace GXLightBrowser
                     break;
             }
 
+            string accentHex = Theme.AccentHex;
+            System.Drawing.Color acc = Theme.Accent;
+            string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
+            string bgHex = Theme.WindowHex;
+            string panelHex = Theme.PanelHex;
+            string borderHex = Theme.BorderHex;
+            string textHex = Theme.TextHex;
+            string mutedHex = Theme.MutedHex;
+
+            bool isLight = string.Equals(settings.ThemeMode, "light", StringComparison.OrdinalIgnoreCase) ||
+                           (string.Equals(settings.ThemeMode, "auto", StringComparison.OrdinalIgnoreCase) && Theme.Window.R > 128);
+            string inputBgHex = isLight ? "#ffffff" : "#1a1e26";
+            string buttonTextHex = (Theme.Accent.R * 0.299f + Theme.Accent.G * 0.587f + Theme.Accent.B * 0.114f > 150f) ? "#0e1117" : "#ffffff";
+            
+            string wrapBg;
+            if (isLight)
+            {
+                wrapBg = "linear-gradient(135deg, rgba(" + Theme.Accent.R + "," + Theme.Accent.G + "," + Theme.Accent.B + ",0.08), " + bgHex + " 60%, rgba(" + Theme.Accent.R + "," + Theme.Accent.G + "," + Theme.Accent.B + ",0.05))";
+            }
+            else
+            {
+                wrapBg = "linear-gradient(135deg, rgba(" + Theme.Accent.R + "," + Theme.Accent.G + "," + Theme.Accent.B + ",0.15), " + bgHex + " 55%, rgba(" + Theme.Accent.R + "," + Theme.Accent.G + "," + Theme.Accent.B + ",0.1))";
+            }
+
             return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
-                ".wrap{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#111620,#0d0f14 55%,#13171d)}" +
-                ".box{width:min(860px,92vw)}h1{font-size:44px;margin:0 0 10px;color:#72f5ff;letter-spacing:0}" +
-                "p{color:#aeb8c4;margin:0 0 24px}.search{display:flex;gap:10px}.search input{flex:1;background:#20242d;border:1px solid #4a5360;color:#fff;padding:15px 16px;font-size:16px;outline:0}" +
-                ".search button,.link{background:#72f5ff;color:#061116;border:0;padding:0 18px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}" +
-                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}.card{border:1px solid #2e3440;background:#171a22;padding:16px}.card b{display:block;margin-bottom:6px}" +
+                "<style>" +
+                ":root {" +
+                "  --bg: " + bgHex + ";" +
+                "  --panel: " + panelHex + ";" +
+                "  --text: " + textHex + ";" +
+                "  --muted: " + mutedHex + ";" +
+                "  --accent: " + accentHex + ";" +
+                "  --accent-rgb: " + accentRgb + ";" +
+                "  --border: " + borderHex + ";" +
+                "  --input-bg: " + inputBgHex + ";" +
+                "}" +
+                "body{margin:0;background:var(--bg);color:var(--text);font-family:Segoe UI,Arial,sans-serif}" +
+                ".wrap{min-height:100vh;display:grid;place-items:center;padding:28px;background:" + wrapBg + "}" +
+                ".box{width:min(860px,92vw)}h1{font-size:44px;margin:0 0 10px;color:var(--accent);letter-spacing:0}" +
+                "p{color:var(--muted);margin:0 0 24px}.search{display:flex;gap:10px}.search input{flex:1;background:var(--input-bg);border:1px solid var(--border);color:var(--text);padding:15px 16px;font-size:16px;outline:0}" +
+                ".search input:focus{border-color:var(--accent);box-shadow:0 0 8px rgba(var(--accent-rgb),0.25)}" +
+                ".search button,.link{background:var(--accent);color:" + buttonTextHex + ";border:0;padding:0 18px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}" +
+                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}.card{border:1px solid var(--border);background:var(--panel);padding:16px}.card b{display:block;margin-bottom:6px}" +
                 "@media(max-width:620px){h1{font-size:34px}.search{flex-direction:column}.search button{padding:13px}}</style></head>" +
                 "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegación ligera con bloqueo nativo, extensiones locales y accesos rápidos.</p>" +
                 "<form class='search' action='" + searchAction + "' method='get'><input name='" + searchParamName + "' autofocus placeholder='Buscar o escribir una URL en " + searchEngine + "'><button>Buscar</button></form>" +
@@ -538,19 +574,32 @@ namespace GXLightBrowser
             string accentHex = Theme.AccentHex;
             System.Drawing.Color acc = Theme.Accent;
             string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
+            string bgHex = Theme.WindowHex;
+            string panelHex = Theme.PanelHex;
+            string sidebarHex = "#" + Theme.Sidebar.R.ToString("X2") + Theme.Sidebar.G.ToString("X2") + Theme.Sidebar.B.ToString("X2");
+            string textHex = Theme.TextHex;
+            string mutedHex = Theme.MutedHex;
+            string borderHex = Theme.BorderHex;
+
+            bool isLight = string.Equals(settings.ThemeMode, "light", StringComparison.OrdinalIgnoreCase) ||
+                           (string.Equals(settings.ThemeMode, "auto", StringComparison.OrdinalIgnoreCase) && Theme.Window.R > 128);
+            string inputBgHex = isLight ? "#ffffff" : "#1a1e26";
+            string themeCardBgHex = isLight ? "#e5e7eb" : "#13161d";
 
             StringBuilder html = new StringBuilder();
             html.Append("<!doctype html><html><head><meta charset='utf-8'><title>Settings</title>");
             html.Append("<style>");
             html.Append(":root {");
-            html.Append("  --bg-dark: #0d0f14;");
-            html.Append("  --bg-panel: #171a22;");
-            html.Append("  --bg-sidebar: #11131a;");
-            html.Append("  --text: #eef7fa;");
-            html.Append("  --text-muted: #aeb8c4;");
+            html.Append("  --bg-dark: " + bgHex + ";");
+            html.Append("  --bg-panel: " + panelHex + ";");
+            html.Append("  --bg-sidebar: " + sidebarHex + ";");
+            html.Append("  --text: " + textHex + ";");
+            html.Append("  --text-muted: " + mutedHex + ";");
             html.Append("  --accent: " + accentHex + ";");
             html.Append("  --accent-rgb: " + accentRgb + ";");
-            html.Append("  --border: #2e3440;");
+            html.Append("  --border: " + borderHex + ";");
+            html.Append("  --input-bg: " + inputBgHex + ";");
+            html.Append("  --theme-card-bg: " + themeCardBgHex + ";");
             html.Append("}");
             html.Append("* { box-sizing: border-box; }");
             html.Append("body { margin: 0; background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }");
@@ -571,14 +620,14 @@ namespace GXLightBrowser
             html.Append(".setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }");
             html.Append(".switch { position: relative; display: inline-block; width: 44px; height: 22px; }");
             html.Append(".switch input { opacity: 0; width: 0; height: 0; }");
-            html.Append(".slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2f3a; transition: .3s; border-radius: 22px; border: 1px solid var(--border); }");
+            html.Append(".slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--input-bg); transition: .3s; border-radius: 22px; border: 1px solid var(--border); }");
             html.Append(".slider:before { position: absolute; content: ''; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .3s; border-radius: 50%; }");
             html.Append("input:checked + .slider { background-color: rgba(var(--accent-rgb), 0.2); border-color: var(--accent); }");
             html.Append("input:checked + .slider:before { transform: translateX(22px); background-color: var(--accent); box-shadow: 0 0 8px var(--accent); }");
-            html.Append("select, input[type='text'], input[type='number'] { background: #1a1e26; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; outline: none; font-size: 13px; font-family: inherit; }");
+            html.Append("select, input[type='text'], input[type='number'] { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; outline: none; font-size: 13px; font-family: inherit; }");
             html.Append("select:focus, input[type='text']:focus, input[type='number']:focus { border-color: var(--accent); box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.2); }");
             html.Append(".theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 15px; }");
-            html.Append(".theme-card { background: #13161d; border: 1px solid var(--border); border-radius: 4px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }");
+            html.Append(".theme-card { background: var(--theme-card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }");
             html.Append(".theme-card:hover { border-color: var(--accent); transform: translateY(-2px); }");
             html.Append(".theme-card.active { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15); }");
             html.Append(".theme-preview { height: 40px; border-radius: 3px; margin-bottom: 8px; position: relative; display: flex; align-items: center; justify-content: center; }");
@@ -586,8 +635,8 @@ namespace GXLightBrowser
             html.Append(".theme-name { font-size: 12px; font-weight: 600; color: var(--text); }");
             html.Append(".btn { background: var(--accent); color: #061116; border: 0; padding: 10px 20px; font-weight: 700; border-radius: 4px; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }");
             html.Append(".btn:hover { opacity: 0.9; }");
-            html.Append(".btn-secondary { background: #252932; color: var(--text); border: 1px solid var(--border); margin-left: 8px; }");
-            html.Append(".btn-secondary:hover { background: #2d323d; }");
+            html.Append(".btn-secondary { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); margin-left: 8px; }");
+            html.Append(".btn-secondary:hover { opacity: 0.8; }");
             html.Append("</style></head>");
 
             html.Append("<body><div class='container'>");
@@ -609,6 +658,24 @@ namespace GXLightBrowser
             // Section 1: Apariencia
             html.Append("<section id='apariencia'>");
             html.Append("<h2>Apariencia</h2>");
+
+            // Interface Theme Selector Card
+            html.Append("<div class='card'>");
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Tema de Interfaz</div>");
+            html.Append("    <div class='setting-desc'>Selecciona si deseas una apariencia Clara (Light), Oscura (Dark), o que se adapte automáticamente al sistema (Auto).</div>");
+            html.Append("  </div>");
+            html.Append("  <select onchange='changeThemeMode(this.value)'>");
+            string[] modes = { "Dark", "Light", "Auto" };
+            for (int i = 0; i < modes.Length; i++)
+            {
+                bool sel = string.Equals(settings.ThemeMode, modes[i], StringComparison.OrdinalIgnoreCase);
+                html.Append("    <option value='" + modes[i] + "' " + (sel ? "selected" : "") + ">" + modes[i] + "</option>");
+            }
+            html.Append("  </select>");
+            html.Append("</div>");
+            html.Append("</div>");
 
             // Theme grid
             html.Append("<div class='card'>");
@@ -871,6 +938,9 @@ namespace GXLightBrowser
             html.Append("      card.classList.add('active');");
             html.Append("    } else { card.classList.remove('active'); }");
             html.Append("  });");
+            html.Append("}");
+            html.Append("function changeThemeMode(mode) {");
+            html.Append("  window.chrome.webview.postMessage('gxlight:settings:theme-mode:' + mode);");
             html.Append("}");
             html.Append("function changeDownloadsFolder() {");
             html.Append("  window.chrome.webview.postMessage('gxlight:settings:downloads:change');");

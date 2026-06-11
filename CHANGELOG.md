@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.20`
+- Version publicada: `1.21`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,17 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.21 - Modo Claro/Oscuro Inmersivo y Corrección de Atajos WebView2
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- **Modo Claro / Oscuro / Automático**: Soporte completo para cambiar el tema de la interfaz del contenedor nativo y de las páginas internas en tiempo real.
+- **Fondos Inmersivos**: La barra lateral, la barra de navegación y las páginas de configuración e inicio (`gxlight://home`) adoptan un matiz del color de acento del tema seleccionado, replicando la estética premium de Opera GX.
+- **Foco de Atajos Solucionado**: Implementación definitiva mediante la intercepción del evento `AcceleratorKeyPressed` en `CoreWebView2Controller` que asegura que los atajos `Ctrl+T` (nueva pestaña blank en blanco) y `Ctrl+W` (cerrar pestaña) funcionen siempre, incluso si el WebView2 tiene el foco.
+- **Buscador Predeterminado Persistente**: Se corrigió el flujo de cambio y guardado de motor de búsqueda predeterminado (Google, DuckDuckGo, Bing, Yahoo) en `settings.ini`.
 
 ## v1.20 - Temas, Rediseño de Configuración y UI Compacta
 

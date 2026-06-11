@@ -570,7 +570,7 @@ namespace GXLightBrowser
             }
             Logger.Info("Using WebView2 Runtime " + webView2Version);
             _appSettings = AppSettings.Load();
-            Theme.ApplyTheme(_appSettings.SelectedTheme);
+            Theme.ApplyTheme(_appSettings.SelectedTheme, _appSettings.ThemeMode);
             ApplyThemeToControls();
             ApplyLayoutDimensions();
 
@@ -772,6 +772,41 @@ namespace GXLightBrowser
             web.CoreWebView2.FaviconChanged += FaviconChangedHandler;
             web.CoreWebView2.ProcessFailed += Web_ProcessFailed;
             web.CoreWebView2.ContainsFullScreenElementChanged += ContainsFullScreenElementChanged;
+
+            try
+            {
+                var controllerField = typeof(WebView2).GetField("_coreWebView2Controller", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (controllerField != null)
+                {
+                    var controller = controllerField.GetValue(web) as Microsoft.Web.WebView2.Core.CoreWebView2Controller;
+                    if (controller != null)
+                    {
+                        controller.AcceleratorKeyPressed += (s, args) =>
+                        {
+                            if (args.KeyEventKind == Microsoft.Web.WebView2.Core.CoreWebView2KeyEventKind.KeyDown ||
+                                args.KeyEventKind == Microsoft.Web.WebView2.Core.CoreWebView2KeyEventKind.SystemKeyDown)
+                            {
+                                Keys key = (Keys)args.VirtualKey;
+                                Keys modifiers = Keys.None;
+                                if (GetKeyState(0x11) < 0) modifiers |= Keys.Control;
+                                if (GetKeyState(0x10) < 0) modifiers |= Keys.Shift;
+                                if (GetKeyState(0x12) < 0) modifiers |= Keys.Alt;
+
+                                Keys keyData = key | modifiers;
+                                if (IsBrowserShortcut(keyData))
+                                {
+                                    args.Handled = true;
+                                    BeginInvoke((MethodInvoker)delegate { HandleBrowserShortcut(keyData); });
+                                }
+                            }
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error registering AcceleratorKeyPressed: " + ex.Message);
+            }
         }
 
         private void ContainsFullScreenElementChanged(object sender, object e)
@@ -1215,6 +1250,10 @@ namespace GXLightBrowser
                             _gxControl.MaxActiveTabs = limit;
                         }
                     }
+                    else if (key == "DefaultSearchEngine")
+                    {
+                        _appSettings.DefaultSearchEngine = val;
+                    }
 
                     _appSettings.Save();
                 }
@@ -1225,28 +1264,23 @@ namespace GXLightBrowser
             if (message.StartsWith(settingsThemePrefix, StringComparison.Ordinal))
             {
                 string themeName = message.Substring(settingsThemePrefix.Length);
-                Theme.ApplyTheme(themeName);
                 _appSettings.SelectedTheme = themeName;
                 _appSettings.Save();
+                Theme.ApplyTheme(themeName, _appSettings.ThemeMode);
                 ApplyThemeToControls();
+                UpdateInternalPagesTheme();
+                return;
+            }
 
-                string accentHex = Theme.AccentHex;
-                System.Drawing.Color acc = Theme.Accent;
-                string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
-                string js = string.Format("document.documentElement.style.setProperty('--accent', '{0}'); document.documentElement.style.setProperty('--accent-rgb', '{1}');", accentHex, accentRgb);
-                
-                for (int i = 0; i < _tabs.TabPages.Count; i++)
-                {
-                    BrowserTab browserTab = _tabs.TabPages[i].Tag as BrowserTab;
-                    if (browserTab != null && browserTab.WebView != null && browserTab.WebView.CoreWebView2 != null)
-                    {
-                        string url = GetTabUrl(browserTab);
-                        if (url.StartsWith("gxlight://settings", StringComparison.OrdinalIgnoreCase))
-                        {
-                            browserTab.WebView.CoreWebView2.ExecuteScriptAsync(js);
-                        }
-                    }
-                }
+            const string settingsThemeModePrefix = "gxlight:settings:theme-mode:";
+            if (message.StartsWith(settingsThemeModePrefix, StringComparison.Ordinal))
+            {
+                string themeMode = message.Substring(settingsThemeModePrefix.Length);
+                _appSettings.ThemeMode = themeMode;
+                _appSettings.Save();
+                Theme.ApplyTheme(_appSettings.SelectedTheme, themeMode);
+                ApplyThemeToControls();
+                UpdateInternalPagesTheme();
                 return;
             }
 
@@ -1290,7 +1324,7 @@ namespace GXLightBrowser
                 _gxControl.LowResourcesModeEnabled = _appSettings.LowResourcesModeEnabled;
                 _gxControl.MaxActiveTabs = _appSettings.MaxActiveTabs;
 
-                Theme.ApplyTheme(_appSettings.SelectedTheme);
+                Theme.ApplyTheme(_appSettings.SelectedTheme, _appSettings.ThemeMode);
                 ApplyThemeToControls();
                 ApplyLayoutDimensions();
 
@@ -4965,6 +4999,54 @@ namespace GXLightBrowser
             if (_rootLayout != null)
             {
                 _rootLayout.Invalidate(true);
+            }
+        }
+
+        private void UpdateInternalPagesTheme()
+        {
+            string accentHex = Theme.AccentHex;
+            System.Drawing.Color acc = Theme.Accent;
+            string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
+            string bgHex = Theme.WindowHex;
+            string panelBgHex = Theme.PanelHex;
+            string textHex = Theme.TextHex;
+            string mutedHex = Theme.MutedHex;
+            string borderHex = Theme.BorderHex;
+
+            string js = string.Format(
+                "document.documentElement.setAttribute('data-theme-mode', '{0}'); " +
+                "document.documentElement.style.setProperty('--accent', '{1}'); " +
+                "document.documentElement.style.setProperty('--accent-rgb', '{2}'); " +
+                "document.documentElement.style.setProperty('--bg', '{3}'); " +
+                "document.documentElement.style.setProperty('--panel-bg', '{4}'); " +
+                "document.documentElement.style.setProperty('--text', '{5}'); " +
+                "document.documentElement.style.setProperty('--muted', '{6}'); " +
+                "document.documentElement.style.setProperty('--border', '{7}');",
+                (_appSettings.ThemeMode ?? "Dark").ToLowerInvariant(),
+                accentHex,
+                accentRgb,
+                bgHex,
+                panelBgHex,
+                textHex,
+                mutedHex,
+                borderHex
+            );
+
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab browserTab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (browserTab != null)
+                {
+                    string url = GetTabUrl(browserTab);
+                    if (url.StartsWith("gxlight://settings", StringComparison.OrdinalIgnoreCase) ||
+                        url.StartsWith("gxlight://home", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (browserTab.WebView != null && browserTab.WebView.CoreWebView2 != null)
+                        {
+                            browserTab.WebView.CoreWebView2.ExecuteScriptAsync(js);
+                        }
+                    }
+                }
             }
         }
 

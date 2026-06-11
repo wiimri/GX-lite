@@ -36,6 +36,7 @@ namespace GXLightBrowser
         public string CustomDownloadsFolder { get; set; }
         public bool AskSavePathBeforeDownload { get; set; }
         public string DefaultSearchEngine { get; set; }
+        public string ThemeMode { get; set; }
 
         public AppSettings()
         {
@@ -66,6 +67,7 @@ namespace GXLightBrowser
             CustomDownloadsFolder = string.Empty;
             AskSavePathBeforeDownload = false;
             DefaultSearchEngine = "DuckDuckGo";
+            ThemeMode = "Dark";
         }
 
         public static AppSettings Load()
@@ -135,6 +137,8 @@ namespace GXLightBrowser
                         settings.AskSavePathBeforeDownload = bool.Parse(value);
                     else if (string.Equals(key, "DefaultSearchEngine", StringComparison.OrdinalIgnoreCase))
                         settings.DefaultSearchEngine = value;
+                    else if (string.Equals(key, "ThemeMode", StringComparison.OrdinalIgnoreCase))
+                        settings.ThemeMode = value;
                 }
             }
             catch (Exception ex)
@@ -175,6 +179,7 @@ namespace GXLightBrowser
                 builder.Append("CustomDownloadsFolder=").Append(CustomDownloadsFolder ?? string.Empty).AppendLine();
                 builder.Append("AskSavePathBeforeDownload=").Append(AskSavePathBeforeDownload).AppendLine();
                 builder.Append("DefaultSearchEngine=").Append(DefaultSearchEngine ?? "DuckDuckGo").AppendLine();
+                builder.Append("ThemeMode=").Append(ThemeMode ?? "Dark").AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }

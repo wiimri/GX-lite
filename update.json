@@ -1,15 +1,15 @@
 {
-  "version": "1.20",
-  "releaseName": "GX Light Browser 1.20",
+  "version": "1.21",
+  "releaseName": "GX Light Browser 1.21",
   "publishedAt": "2026-06-11",
   "downloadUrl": "https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe",
   "sha256Url": "https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.sha256.txt",
   "sourceUrl": "https://github.com/wiimri/GX-lite",
   "changelogUrl": "https://raw.githubusercontent.com/wiimri/GX-lite/main/CHANGELOG.md",
   "highlights": [
-    "Nuevo diseno de pagina de configuracion con barra lateral interactiva al estilo Opera GX.",
-    "Sistema de 12 temas de acento personalizables con cambios de color en tiempo real.",
-    "Componentes visuales reducidos y compactados para maximizar el espacio de la web.",
-    "Menu principal y contextuales con diseno sin bordes y estilo profesional oscuro."
+    "Soporte completo para temas Claro (Light), Oscuro (Dark) y Automatico (Auto).",
+    "Fondos y paneles inmersivos que se adaptan con sutiles matices del color de acento.",
+    "Intercepcion robusta de atajos de teclado (Ctrl+T, Ctrl+W) con foco dentro del WebView2.",
+    "Selector de buscador predeterminado funcional e integrado con la pagina de inicio y direccion."
   ]
 }
