@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.17`
+- Version publicada: `1.18`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,19 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.18 - Bloqueo del reproductor, boton visible y favicons
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- YouTube Shields limpia `adPlacements`, `playerAds`, `adSlots` y estructuras equivalentes antes de que el reproductor pueda iniciar anuncios.
+- La limpieza cubre datos iniciales, respuestas JSON y llamadas `fetch` del endpoint del reproductor.
+- Se conservan los datos normales del video y ya no se acelera, silencia ni adelanta contenido.
+- Se agrego el boton visible `Block Ads On/Off` junto a GX Control en la barra superior.
+- Los favicons ahora prueban el icono de WebView2, el enlace declarado por la pagina y `/favicon.ico`.
+- Los favicons descargados se guardan en un cache local por dominio para pestañas activas y suspendidas.
 
 ## v1.17 - Comentarios, bloqueo real, fullscreen y colapso individual
 

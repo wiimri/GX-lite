@@ -9,16 +9,16 @@ fs.mkdirSync(output, { recursive: true });
 
 function readYouTubeShieldsScript() {
   const source = fs.readFileSync(path.join(root, "src", "BrowserForm.cs"), "utf8");
-  const start = source.indexOf("private static string YouTubeShieldsScript()");
+  const start = source.indexOf("private static string YouTubeShieldsScript(bool enabled)");
   if (start < 0) {
     throw new Error("Could not find YouTubeShieldsScript in BrowserForm.cs");
   }
   const body = source.slice(start);
-  const match = body.match(/return @"([\s\S]*?)";\r?\n\s*}/);
+  const match = body.match(/return @"([\s\S]*?)"\.Replace\("__GX_ADS_ENABLED__"/);
   if (!match) {
     throw new Error("Could not extract YouTubeShieldsScript from BrowserForm.cs");
   }
-  return match[1].replace(/\"\"/g, "\"");
+  return match[1].replace(/\"\"/g, "\"").replace("__GX_ADS_ENABLED__", "true");
 }
 
 function verifyInternalPageRoutes() {
@@ -34,6 +34,9 @@ function verifyInternalPageRoutes() {
     [browserForm.includes("ContainsFullScreenElementChanged"), "WebView2 fullscreen handling is missing"],
     [browserForm.includes("Collapse this tab"), "individual compact tab action is missing"],
     [browserForm.includes("SetSelectedTabsCompact"), "selected compact tab action is missing"],
+    [browserForm.includes('ConfigureButton(_shield, "Block Ads On"'), "visible Block Ads button is missing"],
+    [browserForm.includes("installInitialDataGuard('ytInitialPlayerResponse')"), "initial YouTube player response guard is missing"],
+    [browserForm.includes("sanitizePlayerData"), "YouTube player response sanitizer is missing"],
     [!browserForm.includes("video.currentTime = video.duration"), "YouTube Shields still accelerates ads"],
     [!browserForm.includes("video.playbackRate = 16"), "YouTube Shields still changes playback speed"]
   ];
@@ -171,6 +174,18 @@ async function main() {
       </body></html>`
     });
   });
+  await youtubePage.route("https://www.youtube.com/youtubei/v1/player", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        videoDetails: { videoId: "content-video" },
+        adPlacements: [{ adPlacementRenderer: { config: "ad" } }],
+        playerAds: [{ instreamVideoAdRenderer: { id: "ad" } }],
+        adSlots: [{ adSlotRenderer: { slotId: "ad" } }]
+      })
+    });
+  });
   await youtubePage.addInitScript(readYouTubeShieldsScript());
   await youtubePage.goto("https://www.youtube.com/mock-ad-page");
   await youtubePage.waitForTimeout(800);
@@ -178,19 +193,40 @@ async function main() {
     document.querySelector(".html5-video-player").classList.remove("ad-showing");
     window.__gxLightRunYouTubeShields();
   });
-  const youtubeReport = await youtubePage.evaluate(() => ({
-    name: "youtube-shields",
-    width: window.innerWidth,
-    height: window.innerHeight,
-    failures: [
-      document.body.dataset.skip === "yes" ? null : "skip button was not clicked",
-      document.querySelector("#player-ads") ? "player ad container was not removed" : null,
-      document.querySelector("ytd-promoted-video-renderer") ? "promoted video renderer was not removed" : null,
-      document.querySelector(".ytp-ad-overlay-container") ? "ad overlay was not removed" : null,
-      document.querySelector("video").muted ? "video remained muted after the ad" : null,
-      document.querySelector("video").playbackRate !== 1 ? "video playback rate was not restored" : null
-    ].filter(Boolean)
-  }));
+  const youtubeReport = await youtubePage.evaluate(async () => {
+    const parsed = JSON.parse(JSON.stringify({
+      videoDetails: { videoId: "content-video" },
+      adPlacements: [{ adPlacementRenderer: {} }],
+      playerAds: [{}],
+      nested: { adSlots: [{}], keep: true }
+    }));
+    window.ytInitialPlayerResponse = {
+      videoDetails: { videoId: "initial-content" },
+      adPlacements: [{}],
+      playerAds: [{}]
+    };
+    const fetched = await fetch("/youtubei/v1/player").then((response) => response.json());
+    window.__gxLightAdsEnabled = false;
+    const disabledParsed = JSON.parse(JSON.stringify({ adPlacements: [{}], videoDetails: { videoId: "keep" } }));
+    return {
+      name: "youtube-shields",
+      width: window.innerWidth,
+      height: window.innerHeight,
+      failures: [
+        document.body.dataset.skip === "yes" ? null : "skip button was not clicked",
+        document.querySelector("#player-ads") ? "player ad container was not removed" : null,
+        document.querySelector("ytd-promoted-video-renderer") ? "promoted video renderer was not removed" : null,
+        document.querySelector(".ytp-ad-overlay-container") ? "ad overlay was not removed" : null,
+        document.querySelector("video").muted ? "video remained muted after the ad" : null,
+        document.querySelector("video").playbackRate !== 1 ? "video playback rate was not restored" : null,
+        parsed.adPlacements || parsed.playerAds || parsed.nested.adSlots ? "JSON.parse retained player ad data" : null,
+        window.ytInitialPlayerResponse.adPlacements || window.ytInitialPlayerResponse.playerAds ? "initial player response retained ad data" : null,
+        fetched.adPlacements || fetched.playerAds || fetched.adSlots ? "fetch player response retained ad data" : null,
+        fetched.videoDetails && fetched.videoDetails.videoId === "content-video" ? null : "fetch sanitizer removed normal video data",
+        disabledParsed.adPlacements ? null : "Block Ads Off did not disable player response sanitation"
+      ].filter(Boolean)
+    };
+  });
   await youtubePage.close();
   results.push(youtubeReport);
 

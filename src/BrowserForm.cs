@@ -142,7 +142,7 @@ namespace GXLightBrowser
             nav.RowCount = 1;
             nav.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
             nav.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            nav.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 294));
+            nav.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350));
             top.Controls.Add(nav, 0, 1);
 
             FlowLayoutPanel leftNav = new FlowLayoutPanel();
@@ -188,9 +188,10 @@ namespace GXLightBrowser
             _memoryLabel.BackColor = Theme.Panel;
             _memoryLabel.Font = new Font("Segoe UI", 8.25f, FontStyle.Bold);
             ConfigureButton(_memoryLimitButton, "Limit 768", 88, "Limitador de memoria");
+            ConfigureButton(_shield, "Block Ads On", 96, "Activar o desactivar el bloqueador de anuncios");
             ConfigureButton(_menuButton, "☰", 38, "Menu principal");
             _menuButton.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
-            actions.Controls.AddRange(new Control[] { _menuButton, _memoryLimitButton, _memoryLabel });
+            actions.Controls.AddRange(new Control[] { _menuButton, _memoryLimitButton, _shield, _memoryLabel });
 
             _bookmarksBar.Dock = DockStyle.Fill;
             _bookmarksBar.WrapContents = false;
@@ -255,6 +256,7 @@ namespace GXLightBrowser
                 _adBlockEnabled = !_adBlockEnabled;
                 _appSettings.AdBlockEnabled = _adBlockEnabled;
                 _appSettings.Save();
+                SetYouTubeShieldsEnabled(_adBlockEnabled);
                 UpdateStatus();
             };
             _extensions.Click += async delegate { await ShowExtensionMenuAsync(); };
@@ -622,7 +624,7 @@ namespace GXLightBrowser
             Logger.Info("Password autosave=" + web.CoreWebView2.Profile.IsPasswordAutosaveEnabled +
                 " profile=" + web.CoreWebView2.Profile.ProfilePath);
             web.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
-            web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YouTubeShieldsScript());
+            web.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(YouTubeShieldsScript(_adBlockEnabled));
             web.CoreWebView2.WebResourceRequested += WebResourceRequested;
             web.CoreWebView2.WebMessageReceived += WebMessageReceived;
             web.CoreWebView2.NewWindowRequested += NewWindowRequested;
@@ -3173,7 +3175,7 @@ namespace GXLightBrowser
         {
             BrowserTab tab = ActiveTab();
             int blocked = tab == null ? 0 : tab.BlockedRequests;
-            _shield.Text = _adBlockEnabled ? "Shields On" : "Shields Off";
+            _shield.Text = _adBlockEnabled ? "Block Ads On" : "Block Ads Off";
             _shield.Accent = _adBlockEnabled ? Theme.Accent : Theme.Warning;
             _shield.Invalidate();
             _status.Text = "Bloqueador " + (_adBlockEnabled ? "activo" : "pausado") +
@@ -3196,8 +3198,8 @@ namespace GXLightBrowser
             _newTab.Width = 38;
             _extensions.Text = compact ? "Ext" : "Extensions";
             _extensions.Width = compact ? 58 : 98;
-            _shield.Text = _adBlockEnabled ? (compact ? "Shield" : "Shields On") : (compact ? "Off" : "Shields Off");
-            _shield.Width = compact ? 72 : 106;
+            _shield.Text = _adBlockEnabled ? (compact ? "Ads On" : "Block Ads On") : (compact ? "Ads Off" : "Block Ads Off");
+            _shield.Width = compact ? 68 : 96;
 
             _chromeStore.Visible = !veryCompact;
             RebuildTabStrip();
@@ -3418,13 +3420,120 @@ namespace GXLightBrowser
                 value == "youtu.be" || value.EndsWith(".youtu.be", StringComparison.Ordinal);
         }
 
-        private static string YouTubeShieldsScript()
+        private static string YouTubeShieldsScript(bool enabled)
         {
             return @"(() => {
   const isYouTube = /(\.|^)youtube\.com$/.test(location.hostname) || location.hostname === 'youtu.be';
   if (!isYouTube) return;
+  window.__gxLightAdsEnabled = __GX_ADS_ENABLED__;
   if (window.__gxLightYouTubeShieldsInstalled) return;
   window.__gxLightYouTubeShieldsInstalled = true;
+
+  const nativeJsonParse = JSON.parse.bind(JSON);
+  const adResponseKeys = new Set([
+    'adbreakheartbeatparams',
+    'adbreakparams',
+    'adbreakrenderer',
+    'adplacements',
+    'adplacementrenderer',
+    'adslots',
+    'adslotrenderer',
+    'instreamvideoadrenderer',
+    'linearadsequencerenderer',
+    'playerads'
+  ]);
+
+  function isAdResponseKey(key) {
+    const normalized = String(key || '').toLowerCase();
+    return adResponseKeys.has(normalized) ||
+      normalized.indexOf('adplacement') >= 0 ||
+      normalized.indexOf('adslot') >= 0 ||
+      normalized.indexOf('playerad') >= 0;
+  }
+
+  function sanitizePlayerData(value, seen) {
+    if (!window.__gxLightAdsEnabled) return value;
+    if (!value || typeof value !== 'object') return value;
+    const visited = seen || new WeakSet();
+    if (visited.has(value)) return value;
+    visited.add(value);
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => sanitizePlayerData(item, visited));
+      return value;
+    }
+
+    Object.keys(value).forEach((key) => {
+      if (isAdResponseKey(key)) {
+        try { delete value[key]; } catch (_) {}
+        return;
+      }
+      sanitizePlayerData(value[key], visited);
+    });
+    return value;
+  }
+
+  function containsAdResponseData(text) {
+    if (!window.__gxLightAdsEnabled) return false;
+    if (typeof text !== 'string') return false;
+    const value = text.toLowerCase();
+    return value.indexOf('adplacements') >= 0 ||
+      value.indexOf('playerads') >= 0 ||
+      value.indexOf('adslots') >= 0 ||
+      value.indexOf('adslotrenderer') >= 0 ||
+      value.indexOf('adbreakheartbeatparams') >= 0;
+  }
+
+  function sanitizePlayerText(text) {
+    if (!containsAdResponseData(text)) return text;
+    try {
+      return JSON.stringify(sanitizePlayerData(nativeJsonParse(text)));
+    } catch (_) {
+      return text;
+    }
+  }
+
+  function installInitialDataGuard(name) {
+    let stored;
+    try {
+      Object.defineProperty(window, name, {
+        configurable: true,
+        enumerable: true,
+        get: () => stored,
+        set: (value) => { stored = sanitizePlayerData(value); }
+      });
+    } catch (_) {}
+  }
+
+  installInitialDataGuard('ytInitialPlayerResponse');
+  installInitialDataGuard('ytInitialData');
+
+  JSON.parse = function(text, reviver) {
+    const value = nativeJsonParse(text, reviver);
+    return containsAdResponseData(text) ? sanitizePlayerData(value) : value;
+  };
+
+  const nativeFetch = window.fetch && window.fetch.bind(window);
+  if (nativeFetch) {
+    window.fetch = async function(...args) {
+      const response = await nativeFetch(...args);
+      const input = args[0];
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      if (url.indexOf('/youtubei/v1/player') < 0) return response;
+
+      try {
+        const text = await response.clone().text();
+        const cleaned = new Response(sanitizePlayerText(text), {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers
+        });
+        return cleaned;
+      } catch (_) {
+        return response;
+      }
+    };
+  }
 
   const adSelectors = [
     'ytd-ad-slot-renderer',
@@ -3514,6 +3623,11 @@ namespace GXLightBrowser
   }
 
   function run() {
+    if (!window.__gxLightAdsEnabled) {
+      const style = document.getElementById('gxlight-ad-blocker-css');
+      if (style) style.remove();
+      return;
+    }
     injectStyle();
     clickSkips();
     removeAdNodes();
@@ -3529,7 +3643,23 @@ namespace GXLightBrowser
   };
   if (document.documentElement) observe();
   else document.addEventListener('DOMContentLoaded', observe, { once: true });
-})();";
+})();".Replace("__GX_ADS_ENABLED__", enabled ? "true" : "false");
+        }
+
+        private void SetYouTubeShieldsEnabled(bool enabled)
+        {
+            string value = enabled ? "true" : "false";
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab == null || tab.WebView == null || tab.WebView.CoreWebView2 == null)
+                {
+                    continue;
+                }
+                tab.WebView.CoreWebView2.ExecuteScriptAsync(
+                    "window.__gxLightAdsEnabled=" + value +
+                    ";window.__gxLightRunYouTubeShields&&window.__gxLightRunYouTubeShields();");
+            }
         }
 
         private string InternalPageHtml(string pageName)
@@ -3715,15 +3845,15 @@ namespace GXLightBrowser
                 using (Stream stream = await core.GetFaviconAsync(CoreWebView2FaviconImageFormat.Png))
                 using (Image image = Image.FromStream(stream))
                 {
-                    Image previous = tab.Favicon;
-                    tab.Favicon = new Bitmap(image);
-                    if (previous != null) previous.Dispose();
+                    SetTabFavicon(tab, image);
                 }
                 loaded = true;
+                CacheTabFavicon(tab, core.Source);
                 RebuildTabStrip();
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.Info("WebView2 favicon unavailable: " + ex.Message);
             }
             if (!loaded)
             {
@@ -3735,7 +3865,23 @@ namespace GXLightBrowser
         {
             try
             {
-                Uri faviconUri = null;
+                Uri pageUri = null;
+                string source = null;
+                try
+                {
+                    source = core.Source;
+                }
+                catch
+                {
+                }
+                Uri.TryCreate(source, UriKind.Absolute, out pageUri);
+                if (TryLoadCachedFavicon(tab, pageUri))
+                {
+                    RebuildTabStrip();
+                    return;
+                }
+
+                List<Uri> candidates = new List<Uri>();
                 string candidate = null;
                 try
                 {
@@ -3745,49 +3891,162 @@ namespace GXLightBrowser
                 {
                 }
 
-                if (string.IsNullOrEmpty(candidate) || !Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                Uri faviconUri;
+                if (!string.IsNullOrEmpty(candidate) && Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
                 {
-                    Uri pageUri = null;
-                    string source = null;
-                    try
-                    {
-                        source = core.Source;
-                    }
-                    catch
-                    {
-                    }
-
-                    if (!string.IsNullOrEmpty(source) && Uri.TryCreate(source, UriKind.Absolute, out pageUri))
-                    {
-                        if (pageUri.Scheme == Uri.UriSchemeHttp || pageUri.Scheme == Uri.UriSchemeHttps)
-                        {
-                            faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
-                        }
-                    }
+                    candidates.Add(faviconUri);
                 }
 
-                if (faviconUri == null || (faviconUri.Scheme != Uri.UriSchemeHttp && faviconUri.Scheme != Uri.UriSchemeHttps))
+                try
                 {
-                    return;
+                    string iconResult = await core.ExecuteScriptAsync(
+                        "(document.querySelector('link[rel~=\"icon\"]') || {}).href || ''");
+                    string iconHref = DecodeScriptString(iconResult);
+                    Uri documentIcon;
+                    if (!string.IsNullOrWhiteSpace(iconHref) && Uri.TryCreate(iconHref, UriKind.Absolute, out documentIcon))
+                    {
+                        candidates.Add(documentIcon);
+                    }
+                }
+                catch
+                {
                 }
 
+                if (pageUri != null && (pageUri.Scheme == Uri.UriSchemeHttp || pageUri.Scheme == Uri.UriSchemeHttps))
+                {
+                    candidates.Add(new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico"));
+                }
+
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    Uri iconUri = candidates[i];
+                    if (iconUri == null || (iconUri.Scheme != Uri.UriSchemeHttp && iconUri.Scheme != Uri.UriSchemeHttps))
+                    {
+                        continue;
+                    }
+                    if (await TryDownloadFaviconAsync(iconUri, pageUri, tab))
+                    {
+                        RebuildTabStrip();
+                        return;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Info("Favicon fallback failed: " + ex.Message);
+            }
+        }
+
+        private async Task<bool> TryDownloadFaviconAsync(Uri faviconUri, Uri pageUri, BrowserTab tab)
+        {
+            try
+            {
                 using (WebClient client = new WebClient())
                 {
-                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                    client.Headers[HttpRequestHeader.UserAgent] =
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GXLightBrowser/" + VersionInfo.CurrentVersion;
                     byte[] bytes = await client.DownloadDataTaskAsync(faviconUri);
                     using (MemoryStream stream = new MemoryStream(bytes))
                     using (Image image = Image.FromStream(stream))
                     {
-                        Image previous = tab.Favicon;
-                        tab.Favicon = new Bitmap(image);
-                        if (previous != null) previous.Dispose();
+                        SetTabFavicon(tab, image);
                     }
                 }
-                RebuildTabStrip();
+                CacheTabFavicon(tab, pageUri == null ? null : pageUri.AbsoluteUri);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Info("Favicon candidate failed " + faviconUri + ": " + ex.Message);
+                return false;
+            }
+        }
+
+        private static void SetTabFavicon(BrowserTab tab, Image image)
+        {
+            if (tab == null || image == null)
+            {
+                return;
+            }
+            Image previous = tab.Favicon;
+            tab.Favicon = new Bitmap(image);
+            if (previous != null)
+            {
+                previous.Dispose();
+            }
+        }
+
+        private static string DecodeScriptString(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value == "null")
+            {
+                return string.Empty;
+            }
+            string text = value.Trim();
+            if (text.Length >= 2 && text[0] == '"' && text[text.Length - 1] == '"')
+            {
+                text = text.Substring(1, text.Length - 2);
+            }
+            try
+            {
+                return Regex.Unescape(text.Replace("\\/", "/"));
             }
             catch
             {
-                // Some sites do not expose a downloadable favicon.
+                return text;
+            }
+        }
+
+        private static string FaviconCachePath(Uri pageUri)
+        {
+            if (pageUri == null || string.IsNullOrWhiteSpace(pageUri.Host))
+            {
+                return null;
+            }
+            string host = Regex.Replace(pageUri.Host.ToLowerInvariant(), "[^a-z0-9.-]", "_");
+            return Path.Combine(AppPaths.Favicons, host + ".png");
+        }
+
+        private static bool TryLoadCachedFavicon(BrowserTab tab, Uri pageUri)
+        {
+            try
+            {
+                string path = FaviconCachePath(pageUri);
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
+                {
+                    return false;
+                }
+                using (Image image = Image.FromFile(path))
+                {
+                    SetTabFavicon(tab, image);
+                }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void CacheTabFavicon(BrowserTab tab, string pageUrl)
+        {
+            try
+            {
+                Uri pageUri;
+                if (tab == null || tab.Favicon == null || string.IsNullOrWhiteSpace(pageUrl) ||
+                    !Uri.TryCreate(pageUrl, UriKind.Absolute, out pageUri))
+                {
+                    return;
+                }
+                AppPaths.Ensure();
+                string path = FaviconCachePath(pageUri);
+                if (!string.IsNullOrEmpty(path))
+                {
+                    tab.Favicon.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+                }
+            }
+            catch
+            {
             }
         }
 
@@ -3975,18 +4234,16 @@ namespace GXLightBrowser
                 {
                     return;
                 }
-                Uri faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
-                using (WebClient client = new WebClient())
+                if (TryLoadCachedFavicon(tab, pageUri))
                 {
-                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
-                    byte[] bytes = await client.DownloadDataTaskAsync(faviconUri);
-                    using (MemoryStream stream = new MemoryStream(bytes))
-                    using (Image image = Image.FromStream(stream))
-                    {
-                        tab.Favicon = new Bitmap(image);
-                    }
+                    RebuildTabStrip();
+                    return;
                 }
-                RebuildTabStrip();
+                Uri faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
+                if (await TryDownloadFaviconAsync(faviconUri, pageUri, tab))
+                {
+                    RebuildTabStrip();
+                }
             }
             catch
             {
