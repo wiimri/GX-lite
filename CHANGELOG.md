@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.19`
+- Version publicada: `1.20`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,19 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.20 - Temas, Rediseño de Configuración y UI Compacta
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- Se ha rediseñado por completo la pagina de configuración (`gxlight://settings`) con una interfaz de barra lateral interactiva inspirada en Opera GX.
+- Se implementó un sistema de 12 temas personalizables (Classic, Ultraviolet, Sub Zero, Frutti Di Mare, etc.) con cambios de color de acento en tiempo real en los controles de C# y variables CSS.
+- Se ha compactado la interfaz de usuario para optimizar el espacio visual de la pagina web (barra lateral de 46px, fila de pestañas de 22px, navegación de 30px, estado de 22px).
+- La barra de marcadores se oculta por completo cuando está desactivada en la configuración, maximizando el espacio de visualización vertical.
+- Se implementaron diálogos interactivos para cambiar la carpeta de descargas por defecto y para preguntar la ubicación de guardado antes de descargar cada archivo.
+- Los menús contextuales principales y de pestañas ahora usan un renderizado limpio, sin bordes y con estilo profesional oscuro.
 
 ## v1.19 - Actualizador preparado y atajos WebView2
 

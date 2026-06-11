@@ -30,6 +30,12 @@ namespace GXLightBrowser
         public int TabWidth { get; set; }
         public bool RestorePreviousSession { get; set; }
 
+        // New personalization & downloads properties
+        public string SelectedTheme { get; set; }
+        public bool ShowBookmarksBar { get; set; }
+        public string CustomDownloadsFolder { get; set; }
+        public bool AskSavePathBeforeDownload { get; set; }
+
         public AppSettings()
         {
             LastSeenVersion = string.Empty;
@@ -53,6 +59,11 @@ namespace GXLightBrowser
             CompactIconTabs = false;
             TabWidth = 0;
             RestorePreviousSession = true;
+
+            SelectedTheme = "Classic";
+            ShowBookmarksBar = true;
+            CustomDownloadsFolder = string.Empty;
+            AskSavePathBeforeDownload = false;
         }
 
         public static AppSettings Load()
@@ -112,6 +123,14 @@ namespace GXLightBrowser
                         settings.TabWidth = int.Parse(value);
                     else if (string.Equals(key, "RestorePreviousSession", StringComparison.OrdinalIgnoreCase))
                         settings.RestorePreviousSession = bool.Parse(value);
+                    else if (string.Equals(key, "SelectedTheme", StringComparison.OrdinalIgnoreCase))
+                        settings.SelectedTheme = value;
+                    else if (string.Equals(key, "ShowBookmarksBar", StringComparison.OrdinalIgnoreCase))
+                        settings.ShowBookmarksBar = bool.Parse(value);
+                    else if (string.Equals(key, "CustomDownloadsFolder", StringComparison.OrdinalIgnoreCase))
+                        settings.CustomDownloadsFolder = value;
+                    else if (string.Equals(key, "AskSavePathBeforeDownload", StringComparison.OrdinalIgnoreCase))
+                        settings.AskSavePathBeforeDownload = bool.Parse(value);
                 }
             }
             catch (Exception ex)
@@ -147,6 +166,10 @@ namespace GXLightBrowser
                 builder.Append("CompactIconTabs=").Append(CompactIconTabs).AppendLine();
                 builder.Append("TabWidth=").Append(TabWidth).AppendLine();
                 builder.Append("RestorePreviousSession=").Append(RestorePreviousSession).AppendLine();
+                builder.Append("SelectedTheme=").Append(SelectedTheme ?? "Classic").AppendLine();
+                builder.Append("ShowBookmarksBar=").Append(ShowBookmarksBar).AppendLine();
+                builder.Append("CustomDownloadsFolder=").Append(CustomDownloadsFolder ?? string.Empty).AppendLine();
+                builder.Append("AskSavePathBeforeDownload=").Append(AskSavePathBeforeDownload).AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }

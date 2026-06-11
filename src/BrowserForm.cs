@@ -54,6 +54,8 @@ namespace GXLightBrowser
         private UpdateManifest _updateManifest = UpdateManifest.LocalFallback();
 
         private CoreWebView2Environment _environment;
+        private TableLayoutPanel _rootLayout;
+        private TableLayoutPanel _topLayout;
         private bool _adBlockEnabled = true;
         private bool _privacyFirewallEnabled = true;
         private bool _passwordSavingEnabled = true;
@@ -101,24 +103,24 @@ namespace GXLightBrowser
 
         private void BuildLayout()
         {
-            TableLayoutPanel root = new TableLayoutPanel();
-            root.Dock = DockStyle.Fill;
-            root.BackColor = Theme.Window;
-            root.ColumnCount = 2;
-            root.RowCount = 3;
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 62));
-            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 124));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-            Controls.Add(root);
+            _rootLayout = new TableLayoutPanel();
+            _rootLayout.Dock = DockStyle.Fill;
+            _rootLayout.BackColor = Theme.Window;
+            _rootLayout.ColumnCount = 2;
+            _rootLayout.RowCount = 3;
+            _rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 46));
+            _rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 22));
+            Controls.Add(_rootLayout);
 
             Panel side = new Panel();
             side.Dock = DockStyle.Fill;
-            side.Padding = new Padding(8, 12, 8, 8);
+            side.Padding = new Padding(5, 12, 5, 5);
             side.BackColor = Theme.Sidebar;
-            root.Controls.Add(side, 0, 0);
-            root.SetRowSpan(side, 3);
+            _rootLayout.Controls.Add(side, 0, 0);
+            _rootLayout.SetRowSpan(side, 3);
 
             AddSideButton(side, "YT", "YouTube", "https://www.youtube.com/");
             AddSideButton(side, "TW", "Twitch", "https://www.twitch.tv/");
@@ -126,22 +128,22 @@ namespace GXLightBrowser
             AddSideButton(side, "GH", "GitHub", "https://github.com/");
             AddSideButton(side, "CWS", "Chrome Web Store", ChromeStoreUrl);
 
-            TableLayoutPanel top = new TableLayoutPanel();
-            top.Dock = DockStyle.Fill;
-            top.BackColor = Theme.Topbar;
-            top.Padding = new Padding(8, 6, 10, 7);
-            top.RowCount = 3;
-            top.ColumnCount = 1;
-            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-            top.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-            top.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            root.Controls.Add(top, 1, 0);
+            _topLayout = new TableLayoutPanel();
+            _topLayout.Dock = DockStyle.Fill;
+            _topLayout.BackColor = Theme.Topbar;
+            _topLayout.Padding = new Padding(6, 4, 8, 4);
+            _topLayout.RowCount = 3;
+            _topLayout.ColumnCount = 1;
+            _topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+            _topLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+            _topLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            _rootLayout.Controls.Add(_topLayout, 1, 0);
 
             _tabStrip.Dock = DockStyle.Fill;
             _tabStrip.WrapContents = false;
             _tabStrip.AutoScroll = false;
             _tabStrip.BackColor = Theme.Topbar;
-            top.Controls.Add(_tabStrip, 0, 0);
+            _topLayout.Controls.Add(_tabStrip, 0, 0);
 
             TableLayoutPanel nav = new TableLayoutPanel();
             nav.Dock = DockStyle.Fill;
@@ -150,7 +152,7 @@ namespace GXLightBrowser
             nav.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 220));
             nav.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             nav.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 350));
-            top.Controls.Add(nav, 0, 1);
+            _topLayout.Controls.Add(nav, 0, 1);
 
             FlowLayoutPanel leftNav = new FlowLayoutPanel();
             leftNav.Dock = DockStyle.Fill;
@@ -166,8 +168,8 @@ namespace GXLightBrowser
 
             Panel addressShell = new Panel();
             addressShell.Dock = DockStyle.Fill;
-            addressShell.Padding = new Padding(12, 7, 12, 0);
-            addressShell.Margin = new Padding(6, 2, 8, 2);
+            addressShell.Padding = new Padding(10, 4, 10, 0);
+            addressShell.Margin = new Padding(6, 1, 8, 1);
             addressShell.BackColor = Theme.Address;
             addressShell.Paint += PaintAddressShell;
             addressShell.Resize += delegate { addressShell.Invalidate(); };
@@ -188,8 +190,8 @@ namespace GXLightBrowser
             nav.Controls.Add(actions, 2, 0);
 
             _memoryLabel.Width = 92;
-            _memoryLabel.Height = 32;
-            _memoryLabel.Margin = new Padding(2, 2, 4, 2);
+            _memoryLabel.Height = 24;
+            _memoryLabel.Margin = new Padding(2, 1, 4, 1);
             _memoryLabel.TextAlign = ContentAlignment.MiddleCenter;
             _memoryLabel.ForeColor = Theme.Text;
             _memoryLabel.BackColor = Theme.Panel;
@@ -205,7 +207,7 @@ namespace GXLightBrowser
             _bookmarksBar.AutoScroll = false;
             _bookmarksBar.BackColor = Theme.Topbar;
             _bookmarksBar.Padding = new Padding(0, 2, 0, 0);
-            top.Controls.Add(_bookmarksBar, 0, 2);
+            _topLayout.Controls.Add(_bookmarksBar, 0, 2);
 
             _tabs.Dock = DockStyle.Fill;
             _tabs.Appearance = TabAppearance.FlatButtons;
@@ -213,14 +215,14 @@ namespace GXLightBrowser
             _tabs.ItemSize = new Size(0, 1);
             _tabs.Padding = new Point(0, 0);
             _tabs.BackColor = Theme.Window;
-            root.Controls.Add(_tabs, 1, 1);
+            _rootLayout.Controls.Add(_tabs, 1, 1);
 
             _status.Dock = DockStyle.Fill;
-            _status.Padding = new Padding(12, 5, 12, 0);
+            _status.Padding = new Padding(12, 3, 12, 0);
             _status.BackColor = Theme.Topbar;
             _status.ForeColor = Theme.Muted;
             _status.Font = new Font("Segoe UI", 8.25f);
-            root.Controls.Add(_status, 1, 2);
+            _rootLayout.Controls.Add(_status, 1, 2);
 
             WireEvents();
             ApplyResponsiveMode();
@@ -535,6 +537,9 @@ namespace GXLightBrowser
             }
             Logger.Info("Using WebView2 Runtime " + webView2Version);
             _appSettings = AppSettings.Load();
+            Theme.ApplyTheme(_appSettings.SelectedTheme);
+            ApplyThemeToControls();
+            ApplyLayoutDimensions();
 
             // Cargar preferencias del usuario
             _adBlockEnabled = _appSettings.AdBlockEnabled;
@@ -788,9 +793,7 @@ namespace GXLightBrowser
             FormBorderStyle = _previousBorderStyle;
             Bounds = _previousBounds;
             WindowState = _previousWindowState;
-            root.ColumnStyles[0].Width = 62;
-            root.RowStyles[0].Height = 124;
-            root.RowStyles[2].Height = 28;
+            ApplyLayoutDimensions();
             for (int i = 0; i < root.Controls.Count; i++)
             {
                 root.Controls[i].Visible = true;
@@ -1077,6 +1080,179 @@ namespace GXLightBrowser
                 NavigateInternal("playlist");
                 return;
             }
+
+            const string settingsTogglePrefix = "gxlight:settings:toggle:";
+            if (message.StartsWith(settingsTogglePrefix, StringComparison.Ordinal))
+            {
+                string data = message.Substring(settingsTogglePrefix.Length);
+                int colon = data.IndexOf(':');
+                if (colon > 0)
+                {
+                    string key = data.Substring(0, colon);
+                    bool val = bool.Parse(data.Substring(colon + 1));
+
+                    if (key == "ShowBookmarksBar")
+                    {
+                        _appSettings.ShowBookmarksBar = val;
+                        ApplyLayoutDimensions();
+                    }
+                    else if (key == "ShowPageIcons")
+                    {
+                        _appSettings.ShowPageIcons = val;
+                        RebuildTabStrip();
+                    }
+                    else if (key == "CompactIconTabs")
+                    {
+                        _appSettings.CompactIconTabs = val;
+                        RebuildTabStrip();
+                    }
+                    else if (key == "RamLimiterEnabled")
+                    {
+                        _appSettings.RamLimiterEnabled = val;
+                        _gxControl.RamLimiterEnabled = val;
+                    }
+                    else if (key == "HardMemoryLimit")
+                    {
+                        _appSettings.HardMemoryLimit = val;
+                        _gxControl.HardMemoryLimit = val;
+                    }
+                    else if (key == "LowResourcesModeEnabled")
+                    {
+                        _appSettings.LowResourcesModeEnabled = val;
+                        _gxControl.LowResourcesModeEnabled = val;
+                    }
+                    else if (key == "AdBlockEnabled")
+                    {
+                        _appSettings.AdBlockEnabled = val;
+                        _adBlockEnabled = val;
+                        _shield.Accent = _adBlockEnabled ? Theme.Accent : Theme.Warning;
+                        _shield.Text = _adBlockEnabled ? (Width < 980 ? "Ads On" : "Block Ads On") : (Width < 980 ? "Ads Off" : "Block Ads Off");
+                    }
+                    else if (key == "PrivacyFirewallEnabled")
+                    {
+                        _appSettings.PrivacyFirewallEnabled = val;
+                        _privacyFirewallEnabled = val;
+                    }
+                    else if (key == "PasswordSavingEnabled")
+                    {
+                        _appSettings.PasswordSavingEnabled = val;
+                        _passwordSavingEnabled = val;
+                    }
+                    else if (key == "RestorePreviousSession")
+                    {
+                        _appSettings.RestorePreviousSession = val;
+                    }
+                    else if (key == "AskSavePathBeforeDownload")
+                    {
+                        _appSettings.AskSavePathBeforeDownload = val;
+                    }
+
+                    _appSettings.Save();
+                }
+                return;
+            }
+
+            const string settingsSelectPrefix = "gxlight:settings:select:";
+            if (message.StartsWith(settingsSelectPrefix, StringComparison.Ordinal))
+            {
+                string data = message.Substring(settingsSelectPrefix.Length);
+                int colon = data.IndexOf(':');
+                if (colon > 0)
+                {
+                    string key = data.Substring(0, colon);
+                    string val = data.Substring(colon + 1);
+
+                    if (key == "MaxActiveTabs")
+                    {
+                        int limit;
+                        if (int.TryParse(val, out limit))
+                        {
+                            _appSettings.MaxActiveTabs = limit;
+                            _gxControl.MaxActiveTabs = limit;
+                        }
+                    }
+
+                    _appSettings.Save();
+                }
+                return;
+            }
+
+            const string settingsThemePrefix = "gxlight:settings:theme:";
+            if (message.StartsWith(settingsThemePrefix, StringComparison.Ordinal))
+            {
+                string themeName = message.Substring(settingsThemePrefix.Length);
+                Theme.ApplyTheme(themeName);
+                _appSettings.SelectedTheme = themeName;
+                _appSettings.Save();
+                ApplyThemeToControls();
+
+                string accentHex = Theme.AccentHex;
+                System.Drawing.Color acc = Theme.Accent;
+                string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
+                string js = string.Format("document.documentElement.style.setProperty('--accent', '{0}'); document.documentElement.style.setProperty('--accent-rgb', '{1}');", accentHex, accentRgb);
+                
+                for (int i = 0; i < _tabs.TabPages.Count; i++)
+                {
+                    BrowserTab browserTab = _tabs.TabPages[i].Tag as BrowserTab;
+                    if (browserTab != null && browserTab.WebView != null && browserTab.WebView.CoreWebView2 != null)
+                    {
+                        string url = GetTabUrl(browserTab);
+                        if (url.StartsWith("gxlight://settings", StringComparison.OrdinalIgnoreCase))
+                        {
+                            browserTab.WebView.CoreWebView2.ExecuteScriptAsync(js);
+                        }
+                    }
+                }
+                return;
+            }
+
+            const string settingsDownloadChangePrefix = "gxlight:settings:downloads:change";
+            if (string.Equals(message, settingsDownloadChangePrefix, StringComparison.Ordinal))
+            {
+                using (FolderBrowserDialog dlg = new FolderBrowserDialog())
+                {
+                    dlg.Description = "Seleccionar carpeta de descargas";
+                    dlg.SelectedPath = string.IsNullOrWhiteSpace(_appSettings.CustomDownloadsFolder) ?
+                        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads") :
+                        _appSettings.CustomDownloadsFolder;
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                    {
+                        _appSettings.CustomDownloadsFolder = dlg.SelectedPath;
+                        _appSettings.Save();
+                        core.PostWebMessageAsString("gxlight:settings:downloads:updated:" + dlg.SelectedPath);
+                    }
+                }
+                return;
+            }
+
+            const string settingsResetPrefix = "gxlight:settings:reset";
+            if (string.Equals(message, settingsResetPrefix, StringComparison.Ordinal))
+            {
+                _appSettings = new AppSettings();
+                _appSettings.Save();
+                
+                _adBlockEnabled = _appSettings.AdBlockEnabled;
+                _privacyFirewallEnabled = _appSettings.PrivacyFirewallEnabled;
+                _passwordSavingEnabled = _appSettings.PasswordSavingEnabled;
+                _gxControl.RamLimiterEnabled = _appSettings.RamLimiterEnabled;
+                _gxControl.MemoryLimitMb = _appSettings.MemoryLimitMb;
+                _gxControl.HardMemoryLimit = _appSettings.HardMemoryLimit;
+                _gxControl.HotTabsKillerEnabled = _appSettings.HotTabsKillerEnabled;
+                _gxControl.HotTabsMode = _appSettings.HotTabsMode;
+                _gxControl.CpuLimiterEnabled = _appSettings.CpuLimiterEnabled;
+                _gxControl.CpuLimitPercent = _appSettings.CpuLimitPercent;
+                _gxControl.NetworkLimiterEnabled = _appSettings.NetworkLimiterEnabled;
+                _gxControl.NetworkProfile = _appSettings.NetworkProfile;
+                _gxControl.LowResourcesModeEnabled = _appSettings.LowResourcesModeEnabled;
+                _gxControl.MaxActiveTabs = _appSettings.MaxActiveTabs;
+
+                Theme.ApplyTheme(_appSettings.SelectedTheme);
+                ApplyThemeToControls();
+                ApplyLayoutDimensions();
+
+                NavigateInternal("settings");
+                return;
+            }
         }
 
         private bool IsTrustedInternalMessageSource(CoreWebView2 core, string source)
@@ -1204,12 +1380,35 @@ namespace GXLightBrowser
 
         private void DownloadStarting(object sender, CoreWebView2DownloadStartingEventArgs e)
         {
-            string downloads = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "Downloads");
-            string result = Path.Combine(downloads, e.DownloadOperation.ResultFilePath == null
+            string downloadsFolder = string.IsNullOrWhiteSpace(_appSettings.CustomDownloadsFolder)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+                : _appSettings.CustomDownloadsFolder;
+
+            string fileName = e.DownloadOperation.ResultFilePath == null
                 ? "download"
-                : Path.GetFileName(e.DownloadOperation.ResultFilePath));
+                : Path.GetFileName(e.DownloadOperation.ResultFilePath);
+
+            string result = Path.Combine(downloadsFolder, fileName);
+
+            if (_appSettings.AskSavePathBeforeDownload)
+            {
+                using (SaveFileDialog dlg = new SaveFileDialog())
+                {
+                    dlg.FileName = fileName;
+                    dlg.InitialDirectory = downloadsFolder;
+                    dlg.Filter = "Todos los archivos (*.*)|*.*";
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                    {
+                        result = dlg.FileName;
+                    }
+                    else
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+                }
+            }
+
             e.ResultFilePath = result;
             e.Handled = false;
 
@@ -1376,9 +1575,7 @@ namespace GXLightBrowser
 
         private async Task ShowExtensionMenuAsync()
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
+            ContextMenuStrip menu = CreateContextMenu();
             menu.ShowImageMargin = false;
             menu.Items.Add("Importar extension desempaquetada...", null, async delegate { await ImportExtensionAsync(); });
             menu.Items.Add("Ver extensiones instaladas", null, async delegate { await ShowExtensionsAsync(); });
@@ -1390,59 +1587,66 @@ namespace GXLightBrowser
 
         private void ShowMainMenu()
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
-            menu.Items.Add("New tab                                      Ctrl+T", null, async delegate { await CreateTabAsync(HomeUrl); });
-            menu.Items.Add("New tab in tab island                       Alt+T", null, async delegate { await CreateNewIslandTabAsync(); });
-            menu.Items.Add("New window                                  Ctrl+N", null, delegate { StartNewWindow(); });
-            menu.Items.Add("New private window                          Ctrl+Shift+N", null, delegate { MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light"); });
+            ContextMenuStrip menu = CreateContextMenu();
+
+            menu.Items.Add(CreateMenuItem("Nueva pestaña", "Ctrl+T", async delegate { await CreateTabAsync(HomeUrl); }));
+            menu.Items.Add(CreateMenuItem("Nueva pestaña en isla", "Alt+T", async delegate { await CreateNewIslandTabAsync(); }));
+            menu.Items.Add(CreateMenuItem("Nueva ventana", "Ctrl+N", delegate { StartNewWindow(); }));
+            menu.Items.Add(CreateMenuItem("Nueva ventana privada", "Ctrl+Shift+N", delegate { MessageBox.Show(this, "El modo privado aún no está implementado.", "GX Light"); }));
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("History                                     Ctrl+H", null, delegate { NavigateInternal("history"); });
-            menu.Items.Add("Downloads                                   Ctrl+J", null, delegate { NavigateInternal("downloads"); });
-            ToolStripMenuItem playlist = new ToolStripMenuItem("Playlist");
-            playlist.DropDownItems.Add("Add current page", null, delegate { AddCurrentToPlaylist(); });
-            playlist.DropDownItems.Add("Open Playlist", null, delegate { NavigateInternal("playlist"); });
+
+            menu.Items.Add(CreateMenuItem("Historial", "Ctrl+H", delegate { NavigateInternal("history"); }));
+            menu.Items.Add(CreateMenuItem("Descargas", "Ctrl+J", delegate { NavigateInternal("downloads"); }));
+
+            ToolStripMenuItem playlist = new ToolStripMenuItem("Lista de reproducción (Playlist)");
+            playlist.ForeColor = Theme.Text;
+            playlist.DropDownItems.Add(CreateMenuItem("Agregar página actual", "", delegate { AddCurrentToPlaylist(); }));
+            playlist.DropDownItems.Add(CreateMenuItem("Abrir Playlist", "", delegate { NavigateInternal("playlist"); }));
             menu.Items.Add(playlist);
-            ToolStripMenuItem bookmarks = new ToolStripMenuItem("Bookmarks");
-            bookmarks.DropDownItems.Add("Add current page                            Ctrl+D", null, delegate { AddCurrentBookmark(); });
-            bookmarks.DropDownItems.Add("Manage bookmarks", null, delegate { NavigateInternal("bookmarks"); });
+
+            ToolStripMenuItem bookmarks = new ToolStripMenuItem("Marcadores");
+            bookmarks.ForeColor = Theme.Text;
+            bookmarks.DropDownItems.Add(CreateMenuItem("Añadir página actual", "Ctrl+D", delegate { AddCurrentBookmark(); }));
+            bookmarks.DropDownItems.Add(CreateMenuItem("Administrar marcadores", "", delegate { NavigateInternal("bookmarks"); }));
             bookmarks.DropDownItems.Add(new ToolStripSeparator());
-            bookmarks.DropDownItems.Add("Import bookmarks HTML...", null, delegate { ImportBookmarks(); });
-            bookmarks.DropDownItems.Add("Export bookmarks HTML...", null, delegate { ExportBookmarks(); });
+            bookmarks.DropDownItems.Add(CreateMenuItem("Importar marcadores HTML...", "", delegate { ImportBookmarks(); }));
+            bookmarks.DropDownItems.Add(CreateMenuItem("Exportar marcadores HTML...", "", delegate { ExportBookmarks(); }));
             menu.Items.Add(bookmarks);
-            menu.Items.Add("Extensions", null, async delegate { await NavigateExtensionsPageAsync(); });
-            ToolStripMenuItem passwords = new ToolStripMenuItem("Passwords and autofill");
-            ToolStripMenuItem passwordAutosave = new ToolStripMenuItem("Preguntar antes de guardar passwords");
+
+            menu.Items.Add(CreateMenuItem("Extensiones", "", async delegate { await NavigateExtensionsPageAsync(); }));
+
+            ToolStripMenuItem passwords = new ToolStripMenuItem("Contraseñas y autocompletado");
+            passwords.ForeColor = Theme.Text;
+            ToolStripMenuItem passwordAutosave = CreateMenuItem("Preguntar antes de guardar contraseñas", "", delegate { SetPasswordSavingEnabled(!_passwordSavingEnabled); });
             passwordAutosave.Checked = _passwordSavingEnabled;
-            passwordAutosave.Click += delegate { SetPasswordSavingEnabled(!_passwordSavingEnabled); };
             passwords.DropDownItems.Add(passwordAutosave);
             passwords.DropDownItems.Add(new ToolStripSeparator());
-            passwords.DropDownItems.Add("Password settings", null, delegate { NavigateInternal("passwords"); });
-            passwords.DropDownItems.Add("Import passwords CSV...", null, delegate { ImportPasswords(); });
-            passwords.DropDownItems.Add("Export passwords CSV...", null, delegate { ExportPasswords(); });
-            passwords.DropDownItems.Add("Export CSV template...", null, delegate { ExportPasswordTemplate(); });
+            passwords.DropDownItems.Add(CreateMenuItem("Ajustes de contraseñas", "", delegate { NavigateInternal("passwords"); }));
+            passwords.DropDownItems.Add(CreateMenuItem("Importar contraseñas CSV...", "", delegate { ImportPasswords(); }));
+            passwords.DropDownItems.Add(CreateMenuItem("Exportar contraseñas CSV...", "", delegate { ExportPasswords(); }));
+            passwords.DropDownItems.Add(CreateMenuItem("Exportar plantilla CSV...", "", delegate { ExportPasswordTemplate(); }));
             menu.Items.Add(passwords);
+
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Suspend inactive tabs now", null, delegate { SuspendIdleTabsNow(); });
-            menu.Items.Add("GX Control / limiters", null, delegate { ShowGxControl(); });
-            menu.Items.Add("Memory monitor", null, delegate { NavigateInternal("memory"); });
-            menu.Items.Add("Shields / Privacy Firewall", null, delegate { NavigateInternal("shields"); });
-            ToolStripMenuItem restoreSession = new ToolStripMenuItem("Guardar pestanas al cerrar");
-            restoreSession.Checked = _appSettings.RestorePreviousSession;
-            restoreSession.Click += delegate
+
+            menu.Items.Add(CreateMenuItem("Suspender pestañas inactivas ahora", "", delegate { SuspendIdleTabsNow(); }));
+            menu.Items.Add(CreateMenuItem("Control GX / Limitadores", "", delegate { ShowGxControl(); }));
+            menu.Items.Add(CreateMenuItem("Monitor de memoria", "", delegate { NavigateInternal("memory"); }));
+            menu.Items.Add(CreateMenuItem("Escudo / Cortafuegos de Privacidad", "", delegate { NavigateInternal("shields"); }));
+
+            ToolStripMenuItem restoreSession = CreateMenuItem("Guardar pestañas al cerrar", "", delegate
             {
                 _appSettings.RestorePreviousSession = !_appSettings.RestorePreviousSession;
                 _appSettings.Save();
                 if (_appSettings.RestorePreviousSession) SaveSession();
                 else SessionManager.DeleteSession();
-            };
+            });
+            restoreSession.Checked = _appSettings.RestorePreviousSession;
             menu.Items.Add(restoreSession);
-            ToolStripMenuItem appearance = new ToolStripMenuItem("Tab appearance");
-            ToolStripMenuItem showIcons = new ToolStripMenuItem("Ver iconos de las paginas");
-            showIcons.Checked = _appSettings.ShowPageIcons;
-            showIcons.Click += delegate
+
+            ToolStripMenuItem appearance = new ToolStripMenuItem("Apariencia de pestañas");
+            appearance.ForeColor = Theme.Text;
+            ToolStripMenuItem showIcons = CreateMenuItem("Ver iconos de las páginas", "", delegate
             {
                 _appSettings.ShowPageIcons = !_appSettings.ShowPageIcons;
                 if (!_appSettings.ShowPageIcons)
@@ -1451,10 +1655,9 @@ namespace GXLightBrowser
                 }
                 _appSettings.Save();
                 RebuildTabStrip();
-            };
-            ToolStripMenuItem compactTabs = new ToolStripMenuItem("Pestanas compactas con iconos");
-            compactTabs.Checked = _appSettings.CompactIconTabs;
-            compactTabs.Click += delegate
+            });
+            showIcons.Checked = _appSettings.ShowPageIcons;
+            ToolStripMenuItem compactTabs = CreateMenuItem("Pestañas compactas con iconos", "", delegate
             {
                 _appSettings.CompactIconTabs = !_appSettings.CompactIconTabs;
                 if (_appSettings.CompactIconTabs)
@@ -1463,35 +1666,43 @@ namespace GXLightBrowser
                 }
                 _appSettings.Save();
                 RebuildTabStrip();
-            };
+            });
+            compactTabs.Checked = _appSettings.CompactIconTabs;
             appearance.DropDownItems.Add(showIcons);
             appearance.DropDownItems.Add(compactTabs);
-            ToolStripMenuItem tabSize = new ToolStripMenuItem("Tamano de pestanas");
-            AddTabWidthMenuItem(tabSize, "Automatico", 0);
-            AddTabWidthMenuItem(tabSize, "Pequeno", 92);
+
+            ToolStripMenuItem tabSize = new ToolStripMenuItem("Tamaño de pestañas");
+            tabSize.ForeColor = Theme.Text;
+            AddTabWidthMenuItem(tabSize, "Automático", 0);
+            AddTabWidthMenuItem(tabSize, "Pequeño", 92);
             AddTabWidthMenuItem(tabSize, "Mediano", 140);
             AddTabWidthMenuItem(tabSize, "Grande", 190);
             appearance.DropDownItems.Add(tabSize);
             menu.Items.Add(appearance);
+
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
-            menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
-            menu.Items.Add("Buscar actualizaciones", null, async delegate { await CheckForUpdatesAsync(true); });
+
+            menu.Items.Add(CreateMenuItem("Buscar...", "Ctrl+F", delegate { ExecuteFind(); }));
+            menu.Items.Add(CreateMenuItem("Configuración", "Alt+P", delegate { NavigateInternal("settings"); }));
+            menu.Items.Add(CreateMenuItem("Buscar actualizaciones", "", async delegate { await CheckForUpdatesAsync(true); }));
+
             if (!string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) && File.Exists(_preparedUpdateInstallerPath))
             {
                 string preparedVersion = _preparedUpdateManifest == null ? string.Empty : " v" + _preparedUpdateManifest.Version;
-                menu.Items.Add("Reiniciar para aplicar" + preparedVersion, null, delegate { ApplyPreparedUpdateAndRestart(); });
+                menu.Items.Add(CreateMenuItem("Reiniciar para aplicar" + preparedVersion, "", delegate { ApplyPreparedUpdateAndRestart(); }));
             }
-            menu.Items.Add("Update notes                                v" + _updateManifest.Version, null, delegate { NavigateActive(UpdatedUrl); });
-            menu.Items.Add("Developer tools                             F12", null, delegate
+
+            menu.Items.Add(CreateMenuItem("Notas de actualización", "v" + _updateManifest.Version, delegate { NavigateActive(UpdatedUrl); }));
+            menu.Items.Add(CreateMenuItem("Herramientas de desarrollo", "F12", delegate
             {
                 WebView2 web = ActiveWebView();
                 if (web != null && web.CoreWebView2 != null)
                 {
                     web.CoreWebView2.OpenDevToolsWindow();
                 }
-            });
-            menu.Items.Add("Exit", null, delegate { Close(); });
+            }));
+            menu.Items.Add(CreateMenuItem("Salir", "", delegate { Close(); }));
+
             menu.Show(_menuButton, new Point(0, _menuButton.Height + 4));
         }
 
@@ -1646,6 +1857,7 @@ namespace GXLightBrowser
         private void AddTabWidthMenuItem(ToolStripMenuItem parent, string text, int width)
         {
             ToolStripMenuItem item = new ToolStripMenuItem(text);
+            item.ForeColor = Theme.Text;
             item.Checked = _appSettings.TabWidth == width;
             item.Click += delegate
             {
@@ -1790,10 +2002,10 @@ namespace GXLightBrowser
         private void AddSideButton(Control parent, string label, string tooltip, string url)
         {
             ChromeButton button = new ChromeButton();
-            ConfigureButton(button, label, 46, tooltip);
-            button.Height = 38;
-            button.Left = 8;
-            button.Top = 12 + parent.Controls.Count * 46;
+            ConfigureButton(button, label, 34, tooltip);
+            button.Height = 30;
+            button.Left = 6;
+            button.Top = 12 + parent.Controls.Count * 38;
             button.Click += delegate { NavigateActive(url); };
             button.MouseUp += async delegate(object sender, MouseEventArgs e)
             {
@@ -1809,8 +2021,8 @@ namespace GXLightBrowser
         {
             button.Text = text;
             button.Width = width;
-            button.Height = 32;
-            button.Margin = new Padding(2, 2, 4, 2);
+            button.Height = 24;
+            button.Margin = new Padding(2, 1, 4, 1);
             button.TabStop = false;
             _tips.SetToolTip(button, tooltip);
         }
@@ -1917,10 +2129,7 @@ namespace GXLightBrowser
 
         private void ShowFolderDropdownMenu(string folderName, Control owner)
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
+            ContextMenuStrip menu = CreateContextMenu();
 
             List<BookmarkEntry> folderItems = new List<BookmarkEntry>();
             for (int i = 0; i < _bookmarks.Count; i++)
@@ -1952,10 +2161,7 @@ namespace GXLightBrowser
 
         private void ShowFolderContextMenu(string folderName, Control owner)
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
+            ContextMenuStrip menu = CreateContextMenu();
 
             menu.Items.Add("Eliminar carpeta y su contenido", null, delegate
             {
@@ -2065,10 +2271,7 @@ namespace GXLightBrowser
 
         private void ShowBookmarkContextMenu(BookmarkEntry entry, Control owner)
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
+            ContextMenuStrip menu = CreateContextMenu();
             menu.Items.Add("Open", null, delegate { NavigateActive(entry.Url); });
             menu.Items.Add("Open in new tab", null, async delegate { await CreateTabAsync(entry.Url); });
             menu.Items.Add("Copy address", null, delegate { Clipboard.SetText(entry.Url); });
@@ -2475,8 +2678,8 @@ namespace GXLightBrowser
                 ChromeButton tab = new ChromeButton();
                 tab.Text = Trim(page.Text, Width < 900 ? 16 : 24);
                 tab.Width = browserTab != null && browserTab.IsCompact ? 38 : width;
-                tab.Height = 28;
-                tab.Margin = new Padding(0, 1, 6, 3);
+                tab.Height = 22;
+                tab.Margin = new Padding(0, 1, 6, 1);
                 tab.IsSelected = page == _tabs.SelectedTab;
                 tab.IconOnly = _appSettings.CompactIconTabs || (browserTab != null && browserTab.IsCompact) || tab.Width <= 58;
                 tab.ShowCloseGlyph = !tab.IconOnly && width >= 86;
@@ -2535,8 +2738,8 @@ namespace GXLightBrowser
             }
 
             ConfigureButton(_tabStripNewTab, "+", 34, "Nueva pestana");
-            _tabStripNewTab.Height = 28;
-            _tabStripNewTab.Margin = new Padding(0, 1, 6, 3);
+            _tabStripNewTab.Height = 22;
+            _tabStripNewTab.Margin = new Padding(0, 1, 6, 1);
             _tabStrip.Controls.Add(_tabStripNewTab);
 
             _tabStrip.ResumeLayout();
@@ -2559,8 +2762,8 @@ namespace GXLightBrowser
             ChromeButton island = new ChromeButton();
             island.Text = string.Empty;
             island.Width = Math.Min(40, 14 + Math.Min(5, count) * 6);
-            island.Height = 28;
-            island.Margin = new Padding(0, 1, 6, 3);
+            island.Height = 22;
+            island.Margin = new Padding(0, 1, 6, 1);
             island.IsIslandToggle = true;
             island.IslandMemberCount = count;
             island.IslandColor = color;
@@ -2676,10 +2879,7 @@ namespace GXLightBrowser
                 return;
             }
 
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
+            ContextMenuStrip menu = CreateContextMenu();
             menu.Items.Add("New tab                                      Ctrl+T", null, async delegate { await CreateTabAsync(HomeUrl); });
             int selectedCount = SelectedTabsOr(null).Count;
             ToolStripMenuItem selectionInfo = new ToolStripMenuItem("Selected tabs: " + selectedCount);
@@ -2747,10 +2947,7 @@ namespace GXLightBrowser
 
         private void ShowIslandContextMenu(int islandId, Control owner)
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            menu.BackColor = Theme.Panel;
-            menu.ForeColor = Theme.Text;
-            menu.ShowImageMargin = false;
+            ContextMenuStrip menu = CreateContextMenu();
             menu.Items.Add("Add selected tabs to island", null, delegate { AddSelectedTabsToIsland(islandId); });
             menu.Items.Add("Expand tab island", null, delegate { ToggleIslandCollapsed(islandId); });
             menu.Items.Add("Remove tabs from island", null, delegate { DissolveIsland(islandId); });
@@ -3848,8 +4045,7 @@ namespace GXLightBrowser
                         "<p>Privacy Firewall: <b>" + (_privacyFirewallEnabled ? "enabled" : "disabled") + "</b></p>" +
                         "<p>Rules: " + _adBlocker.RuleCount + " ad rules, " + _privacyFirewall.RuleCount + " firewall rules.</p>");
                 case "settings":
-                    return InternalPages.HtmlShell("Settings",
-                        "<p>Low-resource defaults are active: inactive tabs use low-memory mode, menu-first commands, and local-only privacy controls.</p>");
+                    return InternalPages.SettingsHtml(_appSettings);
                 default:
                     return InternalPages.HtmlShell("GX Light", "<p>Section not found.</p>");
             }
@@ -4619,6 +4815,129 @@ namespace GXLightBrowser
             }
 
             Logger.Info("Memory release complete.");
+        }
+
+        private void ApplyLayoutDimensions()
+        {
+            if (_rootLayout == null || _fullScreenActive) return;
+
+            int sidebarWidth = 46;
+            int statusHeight = 22;
+            
+            int tabStripHeight = 22;
+            int navHeight = 30;
+            int bookmarksHeight = _appSettings.ShowBookmarksBar ? 24 : 0;
+            int topbarHeight = tabStripHeight + navHeight + bookmarksHeight + 6;
+
+            _rootLayout.ColumnStyles[0].Width = sidebarWidth;
+            _rootLayout.RowStyles[0].Height = topbarHeight;
+            _rootLayout.RowStyles[2].Height = statusHeight;
+
+            if (_topLayout != null)
+            {
+                _topLayout.RowStyles[0].Height = tabStripHeight;
+                _topLayout.RowStyles[1].Height = navHeight;
+                
+                if (_appSettings.ShowBookmarksBar)
+                {
+                    _topLayout.RowStyles[2].SizeType = SizeType.Percent;
+                    _topLayout.RowStyles[2].Height = 100;
+                    _bookmarksBar.Visible = true;
+                }
+                else
+                {
+                    _topLayout.RowStyles[2].SizeType = SizeType.Absolute;
+                    _topLayout.RowStyles[2].Height = 0;
+                    _bookmarksBar.Visible = false;
+                }
+            }
+        }
+
+        private void ApplyThemeToControls()
+        {
+            BackColor = Theme.Window;
+            ForeColor = Theme.Text;
+
+            if (_rootLayout != null) _rootLayout.BackColor = Theme.Window;
+            if (_topLayout != null) _topLayout.BackColor = Theme.Topbar;
+            
+            if (_rootLayout != null && _rootLayout.Controls.Count > 0)
+            {
+                Control side = _rootLayout.Controls[0];
+                if (side != null) side.BackColor = Theme.Sidebar;
+            }
+
+            _address.BackColor = Theme.Address;
+            _address.ForeColor = Theme.Text;
+            if (_address.Parent != null) _address.Parent.BackColor = Theme.Address;
+
+            _status.BackColor = Theme.Topbar;
+            _status.ForeColor = Theme.Muted;
+
+            RebuildTabStrip();
+            RebuildBookmarksBar();
+
+            _shield.Accent = _adBlockEnabled ? Theme.Accent : Theme.Warning;
+
+            if (_rootLayout != null)
+            {
+                _rootLayout.Invalidate(true);
+            }
+        }
+
+        private ContextMenuStrip CreateContextMenu()
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            menu.Renderer = new GxMenuRenderer();
+            menu.BackColor = Theme.Panel;
+            menu.ForeColor = Theme.Text;
+            menu.ShowImageMargin = false;
+            return menu;
+        }
+
+        private static ToolStripMenuItem CreateMenuItem(string text, string shortcut, EventHandler onClick)
+        {
+            ToolStripMenuItem item = new ToolStripMenuItem(text, null, onClick);
+            if (!string.IsNullOrEmpty(shortcut))
+            {
+                item.ShortcutKeyDisplayString = shortcut;
+            }
+            item.ForeColor = Theme.Text;
+            return item;
+        }
+    }
+
+    internal class GxColorTable : ProfessionalColorTable
+    {
+        public override Color ToolStripDropDownBackground { get { return Theme.Panel; } }
+        public override Color MenuBorder { get { return Color.FromArgb(45, 48, 60); } }
+        public override Color MenuItemSelected { get { return Theme.Hover; } }
+        public override Color MenuItemSelectedGradientBegin { get { return Theme.Hover; } }
+        public override Color MenuItemSelectedGradientEnd { get { return Theme.Hover; } }
+        public override Color MenuItemPressedGradientBegin { get { return Theme.Selected; } }
+        public override Color MenuItemPressedGradientEnd { get { return Theme.Selected; } }
+        public override Color ImageMarginGradientBegin { get { return Theme.Panel; } }
+        public override Color ImageMarginGradientMiddle { get { return Theme.Panel; } }
+        public override Color ImageMarginGradientEnd { get { return Theme.Panel; } }
+        public override Color SeparatorDark { get { return Color.FromArgb(45, 48, 60); } }
+        public override Color SeparatorLight { get { return Color.Transparent; } }
+    }
+
+    internal sealed class GxMenuRenderer : ToolStripProfessionalRenderer
+    {
+        public GxMenuRenderer() : base(new GxColorTable()) { }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            if (!e.Item.Enabled)
+            {
+                e.TextColor = Theme.Muted;
+            }
+            else
+            {
+                e.TextColor = Theme.Text;
+            }
+            base.OnRenderItemText(e);
         }
     }
 }

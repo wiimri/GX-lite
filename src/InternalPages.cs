@@ -499,5 +499,348 @@ namespace GXLightBrowser
 
             return sb.ToString();
         }
+
+        public static string SettingsHtml(AppSettings settings)
+        {
+            if (settings == null)
+            {
+                settings = new AppSettings();
+            }
+
+            string accentHex = Theme.AccentHex;
+            System.Drawing.Color acc = Theme.Accent;
+            string accentRgb = string.Format("{0},{1},{2}", acc.R, acc.G, acc.B);
+
+            StringBuilder html = new StringBuilder();
+            html.Append("<!doctype html><html><head><meta charset='utf-8'><title>Settings</title>");
+            html.Append("<style>");
+            html.Append(":root {");
+            html.Append("  --bg-dark: #0d0f14;");
+            html.Append("  --bg-panel: #171a22;");
+            html.Append("  --bg-sidebar: #11131a;");
+            html.Append("  --text: #eef7fa;");
+            html.Append("  --text-muted: #aeb8c4;");
+            html.Append("  --accent: " + accentHex + ";");
+            html.Append("  --accent-rgb: " + accentRgb + ";");
+            html.Append("  --border: #2e3440;");
+            html.Append("}");
+            html.Append("* { box-sizing: border-box; }");
+            html.Append("body { margin: 0; background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; }");
+            html.Append(".container { display: flex; height: 100vh; }");
+            html.Append(".sidebar { width: 250px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 20px 0; overflow-y: auto; }");
+            html.Append(".sidebar-item { padding: 12px 24px; color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; transition: color 0.2s, border-left 0.2s; border-left: 3px solid transparent; }");
+            html.Append(".sidebar-item:hover { color: var(--text); }");
+            html.Append(".sidebar-item.active { color: var(--accent); border-left: 3px solid var(--accent); background: rgba(var(--accent-rgb), 0.05); }");
+            html.Append(".content { flex: 1; padding: 40px; overflow-y: auto; scroll-behavior: smooth; }");
+            html.Append("h1 { font-size: 28px; font-weight: 700; margin: 0 0 20px; color: var(--text); letter-spacing: 0.5px; }");
+            html.Append("h2 { font-size: 18px; font-weight: 600; margin: 30px 0 15px; color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 8px; }");
+            html.Append(".card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 4px; padding: 20px; margin-bottom: 16px; transition: border-color 0.2s; }");
+            html.Append(".card:hover { border-color: rgba(var(--accent-rgb), 0.3); }");
+            html.Append(".setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }");
+            html.Append(".setting-row:last-child { border-bottom: 0; }");
+            html.Append(".setting-info { flex: 1; padding-right: 20px; }");
+            html.Append(".setting-title { font-size: 14px; font-weight: 600; color: var(--text); }");
+            html.Append(".setting-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }");
+            html.Append(".switch { position: relative; display: inline-block; width: 44px; height: 22px; }");
+            html.Append(".switch input { opacity: 0; width: 0; height: 0; }");
+            html.Append(".slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #2a2f3a; transition: .3s; border-radius: 22px; border: 1px solid var(--border); }");
+            html.Append(".slider:before { position: absolute; content: ''; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: var(--text-muted); transition: .3s; border-radius: 50%; }");
+            html.Append("input:checked + .slider { background-color: rgba(var(--accent-rgb), 0.2); border-color: var(--accent); }");
+            html.Append("input:checked + .slider:before { transform: translateX(22px); background-color: var(--accent); box-shadow: 0 0 8px var(--accent); }");
+            html.Append("select, input[type='text'], input[type='number'] { background: #1a1e26; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 4px; outline: none; font-size: 13px; font-family: inherit; }");
+            html.Append("select:focus, input[type='text']:focus, input[type='number']:focus { border-color: var(--accent); box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.2); }");
+            html.Append(".theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 15px; }");
+            html.Append(".theme-card { background: #13161d; border: 1px solid var(--border); border-radius: 4px; padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }");
+            html.Append(".theme-card:hover { border-color: var(--accent); transform: translateY(-2px); }");
+            html.Append(".theme-card.active { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.15); }");
+            html.Append(".theme-preview { height: 40px; border-radius: 3px; margin-bottom: 8px; position: relative; display: flex; align-items: center; justify-content: center; }");
+            html.Append(".theme-preview span { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 20px; background: rgba(0,0,0,0.4); color: #fff; }");
+            html.Append(".theme-name { font-size: 12px; font-weight: 600; color: var(--text); }");
+            html.Append(".btn { background: var(--accent); color: #061116; border: 0; padding: 10px 20px; font-weight: 700; border-radius: 4px; cursor: pointer; font-size: 13px; transition: opacity 0.2s; }");
+            html.Append(".btn:hover { opacity: 0.9; }");
+            html.Append(".btn-secondary { background: #252932; color: var(--text); border: 1px solid var(--border); margin-left: 8px; }");
+            html.Append(".btn-secondary:hover { background: #2d323d; }");
+            html.Append("</style></head>");
+
+            html.Append("<body><div class='container'>");
+
+            // Sidebar
+            html.Append("<div class='sidebar'>");
+            html.Append("<div class='sidebar-item active' onclick='scrollToSec(\"apariencia\")'>Apariencia</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"limitadores\")'>Limitadores GX</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"privacidad\")'>Privacidad y Seguridad</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"inicio\")'>Al Iniciar</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"descargas\")'>Descargas</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"sistema\")'>Sistema y WebRTC</div>");
+            html.Append("</div>");
+
+            // Content area
+            html.Append("<div class='content'>");
+            html.Append("<h1>Configuración</h1>");
+
+            // Section 1: Apariencia
+            html.Append("<section id='apariencia'>");
+            html.Append("<h2>Apariencia</h2>");
+
+            // Theme grid
+            html.Append("<div class='card'>");
+            html.Append("<div class='setting-title'>Temas del Navegador</div>");
+            html.Append("<div class='setting-desc'>Elige un tema de acento de color para personalizar la apariencia de GX Light.</div>");
+            html.Append("<div class='theme-grid'>");
+
+            string[] themes = { "Classic", "Ultraviolet", "Sub Zero", "Frutti Di Mare", "Purple Maze", "Vaporwave", "Rose Quartz", "Hackerman", "Lambda", "After Eight", "Pay To Win", "White Wolf" };
+            string[] colors = { "#FA114F", "#7A3CFF", "#00BFF3", "#FF6347", "#CC3399", "#FF69B4", "#F7CAC9", "#00FF41", "#FDB813", "#00994C", "#FFD700", "#D3D3D3" };
+
+            for (int i = 0; i < themes.Length; i++)
+            {
+                bool active = string.Equals(settings.SelectedTheme, themes[i], StringComparison.OrdinalIgnoreCase);
+                html.Append("<div class='theme-card" + (active ? " active" : "") + "' onclick='changeTheme(\"" + themes[i] + "\")'>");
+                html.Append("  <div class='theme-preview' style='background:" + colors[i] + ";'><span>" + themes[i][0] + "</span></div>");
+                html.Append("  <div class='theme-name'>" + themes[i] + "</div>");
+                html.Append("</div>");
+            }
+            html.Append("</div></div>");
+
+            // Checkboxes / Toggles
+            html.Append("<div class='card'>");
+
+            // Show Bookmarks Bar
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Mostrar barra de marcadores</div>");
+            html.Append("    <div class='setting-desc'>Muestra la barra de marcadores rápidos debajo de la barra de direcciones.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.ShowBookmarksBar ? "checked" : "") + " onchange='toggleSetting(\"ShowBookmarksBar\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Show Page Icons
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Mostrar iconos en las pestañas</div>");
+            html.Append("    <div class='setting-desc'>Carga y dibuja los favicons de las páginas web en cada pestaña.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.ShowPageIcons ? "checked" : "") + " onchange='toggleSetting(\"ShowPageIcons\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Compact Icon Tabs
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Pestañas compactas con iconos</div>");
+            html.Append("    <div class='setting-desc'>Reduce las pestañas inactivas a mostrar solo el icono para ahorrar espacio.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.CompactIconTabs ? "checked" : "") + " onchange='toggleSetting(\"CompactIconTabs\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            // Section 2: Limitadores GX
+            html.Append("<section id='limitadores'>");
+            html.Append("<h2>Limitadores GX</h2>");
+            html.Append("<div class='card'>");
+
+            // RAM Limiter
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Limitador de RAM</div>");
+            html.Append("    <div class='setting-desc'>Controla cuánta memoria RAM puede consumir el navegador en segundo plano.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.RamLimiterEnabled ? "checked" : "") + " onchange='toggleSetting(\"RamLimiterEnabled\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Hard Limit
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Límite estricto de RAM</div>");
+            html.Append("    <div class='setting-desc'>Suspende pestañas agresivamente en cuanto se alcanza el límite establecido.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.HardMemoryLimit ? "checked" : "") + " onchange='toggleSetting(\"HardMemoryLimit\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Low Resources Mode
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Modo de bajos recursos</div>");
+            html.Append("    <div class='setting-desc'>Mantiene activas únicamente una cantidad máxima de pestañas para ahorrar recursos.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.LowResourcesModeEnabled ? "checked" : "") + " onchange='toggleSetting(\"LowResourcesModeEnabled\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Max Active Tabs
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Pestañas activas máximas</div>");
+            html.Append("    <div class='setting-desc'>Límite de pestañas abiertas antes de que comience la suspensión automática.</div>");
+            html.Append("  </div>");
+            html.Append("  <input type='number' min='2' max='50' value='" + settings.MaxActiveTabs + "' onchange='selectSetting(\"MaxActiveTabs\", this.value)'>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            // Section 3: Privacidad
+            html.Append("<section id='privacidad'>");
+            html.Append("<h2>Privacidad y Seguridad</h2>");
+            html.Append("<div class='card'>");
+
+            // Adblocker
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Bloquear anuncios (AdBlock)</div>");
+            html.Append("    <div class='setting-desc'>Bloquea anuncios publicitarios no deseados y comerciales en páginas web.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.AdBlockEnabled ? "checked" : "") + " onchange='toggleSetting(\"AdBlockEnabled\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Tracker blocker
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Bloquear rastreadores (Privacy Firewall)</div>");
+            html.Append("    <div class='setting-desc'>Bloquea scripts de telemetría y rastreo de comportamiento de terceros.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.PrivacyFirewallEnabled ? "checked" : "") + " onchange='toggleSetting(\"PrivacyFirewallEnabled\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            // Auto-save passwords
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Preguntar para guardar contraseñas</div>");
+            html.Append("    <div class='setting-desc'>Permite almacenar credenciales de inicio de sesión de forma segura y local.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.PasswordSavingEnabled ? "checked" : "") + " onchange='toggleSetting(\"PasswordSavingEnabled\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            // Section 4: Al Iniciar
+            html.Append("<section id='inicio'>");
+            html.Append("<h2>Al Iniciar</h2>");
+            html.Append("<div class='card'>");
+
+            // Restore previous session
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Restaurar sesión anterior al abrir</div>");
+            html.Append("    <div class='setting-desc'>Vuelve a abrir las pestañas activas de la última sesión al iniciar.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.RestorePreviousSession ? "checked" : "") + " onchange='toggleSetting(\"RestorePreviousSession\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            // Section 5: Descargas
+            html.Append("<section id='descargas'>");
+            html.Append("<h2>Descargas</h2>");
+            html.Append("<div class='card'>");
+
+            // Path selector
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Carpeta de descargas</div>");
+            html.Append("    <div class='setting-desc'>Directorio donde se guardarán los archivos descargados: <b id='dlPathText'>" + (string.IsNullOrWhiteSpace(settings.CustomDownloadsFolder) ? "Carpeta Descargas de Windows" : EscapeHtml(settings.CustomDownloadsFolder)) + "</b></div>");
+            html.Append("  </div>");
+            html.Append("  <button class='btn btn-secondary' onclick='changeDownloadsFolder()'>Cambiar</button>");
+            html.Append("</div>");
+
+            // Ask where to save
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Preguntar dónde guardar cada descarga</div>");
+            html.Append("    <div class='setting-desc'>Muestra el cuadro de diálogo para confirmar la ubicación del archivo antes de descargar.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.AskSavePathBeforeDownload ? "checked" : "") + " onchange='toggleSetting(\"AskSavePathBeforeDownload\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            // Section 6: Sistema y WebRTC
+            html.Append("<section id='sistema'>");
+            html.Append("<h2>Sistema y WebRTC</h2>");
+            html.Append("<div class='card'>");
+
+            // Reset Settings
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Restablecer valores predeterminados</div>");
+            html.Append("    <div class='setting-desc'>Restaura todas las configuraciones a sus valores iniciales recomendados.</div>");
+            html.Append("  </div>");
+            html.Append("  <button class='btn btn-secondary' style='border-color:#ff6974;color:#ff6974;' onclick='resetSettings()'>Restablecer</button>");
+            html.Append("</div>");
+
+            html.Append("</div></section>");
+
+            html.Append("</div></div>"); // Close content, container
+
+            // JavaScript handlers
+            html.Append("<script>");
+            html.Append("function scrollToSec(id) {");
+            html.Append("  const target = document.getElementById(id);");
+            html.Append("  if(target) { target.scrollIntoView({behavior:'smooth'}); }");
+            html.Append("  document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));");
+            html.Append("  event.currentTarget.classList.add('active');");
+            html.Append("}");
+            html.Append("function toggleSetting(key, checked) {");
+            html.Append("  window.chrome.webview.postMessage('gxlight:settings:toggle:' + key + ':' + checked);");
+            html.Append("}");
+            html.Append("function selectSetting(key, val) {");
+            html.Append("  window.chrome.webview.postMessage('gxlight:settings:select:' + key + ':' + val);");
+            html.Append("}");
+            html.Append("function changeTheme(themeName) {");
+            html.Append("  window.chrome.webview.postMessage('gxlight:settings:theme:' + themeName);");
+            html.Append("  document.querySelectorAll('.theme-card').forEach(card => {");
+            html.Append("    if(card.querySelector('.theme-name').innerText.trim() === themeName) {");
+            html.Append("      card.classList.add('active');");
+            html.Append("    } else { card.classList.remove('active'); }");
+            html.Append("  });");
+            html.Append("}");
+            html.Append("function changeDownloadsFolder() {");
+            html.Append("  window.chrome.webview.postMessage('gxlight:settings:downloads:change');");
+            html.Append("}");
+            html.Append("function resetSettings() {");
+            html.Append("  if (confirm('¿Estás seguro de que deseas restablecer todos los ajustes a los valores iniciales?')) {");
+            html.Append("    window.chrome.webview.postMessage('gxlight:settings:reset');");
+            html.Append("  }");
+            html.Append("}");
+            html.Append("window.chrome.webview.addEventListener('message', event => {");
+            html.Append("  if (event.data.startsWith('gxlight:settings:downloads:updated:')) {");
+            html.Append("    const path = event.data.substring('gxlight:settings:downloads:updated:'.length);");
+            html.Append("    document.getElementById('dlPathText').innerText = path || 'Carpeta Descargas de Windows';");
+            html.Append("  }");
+            html.Append("});");
+            html.Append("</script></body></html>");
+
+            return html.ToString();
+        }
     }
 }
