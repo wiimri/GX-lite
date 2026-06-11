@@ -60,7 +60,7 @@ namespace GXLightBrowser
         {
             if (string.IsNullOrWhiteSpace(themeName))
             {
-                themeName = "Classic";
+                themeName = "Crimson";
             }
             if (string.IsNullOrWhiteSpace(themeMode))
             {
@@ -72,46 +72,59 @@ namespace GXLightBrowser
             {
                 case "classic":
                 case "gxclassic":
+                case "crimson":
                     Accent = Color.FromArgb(250, 17, 79); // Red
                     break;
                 case "ultraviolet":
+                case "aurora":
                     Accent = Color.FromArgb(122, 60, 255); // Purple
                     break;
                 case "subzero":
                 case "sub zero":
+                case "glacier":
                     Accent = Color.FromArgb(0, 191, 243); // Ice Blue
                     break;
                 case "fruttidimare":
                 case "frutti di mare":
+                case "coral":
                     Accent = Color.FromArgb(255, 99, 71); // Tomato Orange
                     break;
                 case "purplemaze":
                 case "purple maze":
+                case "orchid":
                     Accent = Color.FromArgb(204, 51, 153); // Deep Magenta
                     break;
                 case "vaporwave":
+                case "neon rose":
+                case "neonrose":
                     Accent = Color.FromArgb(255, 105, 180); // Hot Pink
                     break;
                 case "rosequartz":
                 case "rose quartz":
+                case "blush":
                     Accent = Color.FromArgb(247, 202, 201); // Soft Pink
                     break;
                 case "hackerman":
+                case "terminal":
                     Accent = Color.FromArgb(0, 255, 65); // Neon Green
                     break;
                 case "lambda":
+                case "amber":
                     Accent = Color.FromArgb(253, 184, 19); // Orange-Yellow
                     break;
                 case "aftereight":
                 case "after eight":
+                case "mint":
                     Accent = Color.FromArgb(0, 153, 76); // Mint Green
                     break;
                 case "paytowin":
                 case "pay to win":
+                case "gold":
                     Accent = Color.FromArgb(255, 215, 0); // Gold
                     break;
                 case "whitewolf":
                 case "white wolf":
+                case "silver":
                     Accent = Color.FromArgb(211, 211, 211); // Silver
                     break;
                 default:

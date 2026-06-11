@@ -1,4 +1,4 @@
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
 using System;
 
 namespace GXLightBrowser
@@ -21,10 +21,10 @@ namespace GXLightBrowser
 
         public static string MissingWebView2Message()
         {
-            return "GX Light Browser necesita Microsoft Edge WebView2 Runtime para mostrar paginas.\n\n" +
+            return "Gan Browser necesita Microsoft Edge WebView2 Runtime para mostrar paginas.\n\n" +
                 "El sistema no lo tiene instalado o fue eliminado/deshabilitado. Esto es comun en instalaciones " +
                 "modificadas como Atlas OS.\n\n" +
-                "Ejecuta nuevamente el instalador de GX Light para reparar WebView2.";
+                "Ejecuta nuevamente el instalador de Gan Browser para reparar WebView2.";
         }
     }
 }

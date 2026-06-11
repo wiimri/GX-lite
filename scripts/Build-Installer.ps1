@@ -43,19 +43,24 @@ if ($LASTEXITCODE -ne 0) {
     throw "Inno Setup fallo con codigo $LASTEXITCODE."
 }
 
-$VersionedInstaller = Get-ChildItem $Dist -Filter "GXLightBrowser-Setup-*-x64.exe" |
+$VersionedInstaller = Get-ChildItem $Dist -Filter "GanBrowser-Setup-*-x64.exe" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 if ($null -ne $VersionedInstaller) {
-    $LatestInstaller = Join-Path $Dist "GXLightBrowser-Setup-x64.exe"
+    $LatestInstaller = Join-Path $Dist "GanBrowser-Setup-x64.exe"
+    $LegacyLatestInstaller = Join-Path $Dist "GXLightBrowser-Setup-x64.exe"
     Copy-Item $VersionedInstaller.FullName $LatestInstaller -Force
+    Copy-Item $VersionedInstaller.FullName $LegacyLatestInstaller -Force
 
     $VersionedHash = (Get-FileHash $VersionedInstaller.FullName -Algorithm SHA256).Hash
     $LatestHash = (Get-FileHash $LatestInstaller -Algorithm SHA256).Hash
+    $LegacyLatestHash = (Get-FileHash $LegacyLatestInstaller -Algorithm SHA256).Hash
     Set-Content -Path (Join-Path $Dist ($VersionedInstaller.BaseName + ".sha256.txt")) `
         -Value ($VersionedHash + "  " + $VersionedInstaller.Name) -Encoding ASCII
+    Set-Content -Path (Join-Path $Dist "GanBrowser-Setup-x64.sha256.txt") `
+        -Value ($LatestHash + "  GanBrowser-Setup-x64.exe") -Encoding ASCII
     Set-Content -Path (Join-Path $Dist "GXLightBrowser-Setup-x64.sha256.txt") `
-        -Value ($LatestHash + "  GXLightBrowser-Setup-x64.exe") -Encoding ASCII
+        -Value ($LegacyLatestHash + "  GXLightBrowser-Setup-x64.exe") -Encoding ASCII
 }
 
 Write-Host "Installer created in $Dist"

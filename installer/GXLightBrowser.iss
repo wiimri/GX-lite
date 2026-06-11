@@ -1,7 +1,7 @@
-#define MyAppName "GX Light Browser"
-#define MyAppVersion "1.22"
+#define MyAppName "Gan Browser"
+#define MyAppVersion "2.0"
 #define MyAppPublisher "wiimri"
-#define MyAppURL "https://github.com/wiimri/GX-lite"
+#define MyAppURL "https://github.com/wiimri/Gan-Browser"
 #define MyAppExeName "GXLightBrowser.exe"
 
 [Setup]
@@ -21,8 +21,8 @@ RestartApplications=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
-OutputBaseFilename=GXLightBrowser-Setup-{#MyAppVersion}-x64
-SetupIconFile=..\assets\GXLight.ico
+OutputBaseFilename=GanBrowser-Setup-{#MyAppVersion}-x64
+SetupIconFile=..\assets\GanBrowser.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
@@ -113,8 +113,10 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
-    { Remove stale per-user shortcuts only after the new installation completed. }
-    DeleteFile(ExpandConstant('{userdesktop}\{#MyAppName}.lnk'));
-    DeleteFile(ExpandConstant('{userprograms}\{#MyAppName}.lnk'));
+    { Remove shortcuts from the former public brand after the new installation completed. }
+    DeleteFile(ExpandConstant('{commondesktop}\GX Light Browser.lnk'));
+    DeleteFile(ExpandConstant('{commonprograms}\GX Light Browser.lnk'));
+    DeleteFile(ExpandConstant('{userdesktop}\GX Light Browser.lnk'));
+    DeleteFile(ExpandConstant('{userprograms}\GX Light Browser.lnk'));
   end;
 end;

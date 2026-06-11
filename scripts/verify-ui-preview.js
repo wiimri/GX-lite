@@ -26,7 +26,17 @@ function verifyInternalPageRoutes() {
   const updateManifest = fs.readFileSync(path.join(root, "src", "UpdateManifest.cs"), "utf8");
   const internalPages = fs.readFileSync(path.join(root, "src", "InternalPages.cs"), "utf8");
   const installer = fs.readFileSync(path.join(root, "installer", "GXLightBrowser.iss"), "utf8");
+  const versionInfo = fs.readFileSync(path.join(root, "src", "VersionInfo.cs"), "utf8");
+  const updateJson = JSON.parse(fs.readFileSync(path.join(root, "update.json"), "utf8"));
+  const buildInstaller = fs.readFileSync(path.join(root, "scripts", "Build-Installer.ps1"), "utf8");
   const requirements = [
+    [browserForm.includes('Text = "Gan Browser"'), "Gan Browser window branding is missing"],
+    [versionInfo.includes('CurrentVersion = "2.0"'), "Gan Browser 2.0 version is missing"],
+    [versionInfo.includes('ReleaseName = "Gan Browser 2.0"'), "Gan Browser release name is missing"],
+    [updateJson.sourceUrl === "https://github.com/wiimri/Gan-Browser", "update manifest repository is incorrect"],
+    [updateJson.downloadUrl.endsWith("/GanBrowser-Setup-x64.exe"), "Gan permanent installer URL is incorrect"],
+    [updateJson.sha256Url.endsWith("/GanBrowser-Setup-x64.sha256.txt"), "Gan installer SHA-256 URL is incorrect"],
+    [buildInstaller.includes('"GXLightBrowser-Setup-x64.exe"'), "legacy permanent installer compatibility is missing"],
     [browserForm.includes('pageName == "updated"'), "gxlight://updated route is missing"],
     [browserForm.includes('case "home":'), "internal home fallback route is missing"],
     [browserForm.includes('case "updated":'), "internal update fallback route is missing"],
@@ -42,6 +52,7 @@ function verifyInternalPageRoutes() {
     [browserForm.includes("PreFilterMessage"), "native keyboard message routing is missing"],
     [browserForm.includes("IsBrowserShortcut"), "browser shortcut routing is missing"],
     [browserForm.includes("PrepareUpdateAsync"), "background update preparation is missing"],
+    [browserForm.includes("string.IsNullOrWhiteSpace(manifest.Sha256Url) || !VerifyInstallerHash"), "updates without SHA-256 are not rejected"],
     [browserForm.includes("/RELAUNCH"), "update relaunch argument is missing"],
     [internalPages.includes("gxlight:update:prepare"), "update preparation action is missing"],
     [installer.includes("RestartApplications=yes"), "installer application restart support is missing"],

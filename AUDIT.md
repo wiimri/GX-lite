@@ -1,4 +1,4 @@
-# GX Light Browser Audit
+﻿# Gan Browser Audit
 
 Fecha: 2026-06-07
 
@@ -6,7 +6,7 @@ Version actual: 1.6
 
 ## Estado Actual
 
-GX Light Browser ya es una base viable para un navegador Windows liviano porque usa WebView2 en vez de Electron y comparte un solo `CoreWebView2Environment` entre pestañas.
+Gan Browser ya es una base viable para un navegador Windows liviano porque usa WebView2 en vez de Electron y comparte un solo `CoreWebView2Environment` entre pestañas.
 
 Medicion local despues de iniciar la app:
 
@@ -21,7 +21,7 @@ Medicion local despues de iniciar la app:
 - Las pestanas inactivas pasan a `CoreWebView2MemoryUsageTargetLevel.Low`; la activa vuelve a `Normal`.
 - Se agrego `PrivacyFirewall`: bloqueo local de trackers conocidos, endpoints tipo beacon/telemetry/pixel y limpieza de parametros de seguimiento.
 - Se agrego menu principal con secciones internas para historial, descargas, extensiones, passwords/autofill, memoria, shields y settings.
-- Se agrego monitor visible y GX Control configurable para RAM, hard limit, hot tabs killer, CPU policy y network policy.
+- Se agrego monitor visible y Gan Pulse configurable para RAM, hard limit, hot tabs killer, CPU policy y network policy.
 - Se agrego sistema de versionado y pestana de novedades de una sola aparicion por version.
 - Se agrego suspension real de pestanas inactivas mediante descarte del WebView.
 - Se agrego barra de favoritos con import/export HTML compatible con navegadores.

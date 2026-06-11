@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -25,7 +25,7 @@ namespace GXLightBrowser
         public GxControlDialog(GxControlSettings settings)
         {
             _settings = settings;
-            Text = "GX Control";
+            Text = "Gan Pulse";
             StartPosition = FormStartPosition.CenterParent;
             Size = new Size(390, 720);
             MinimumSize = new Size(360, 620);
@@ -46,7 +46,7 @@ namespace GXLightBrowser
             Controls.Add(root);
 
             Label title = new Label();
-            title.Text = "GX CONTROL";
+            title.Text = "GAN PULSE";
             title.ForeColor = Theme.Warning;
             title.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
             title.AutoSize = true;

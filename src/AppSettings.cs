@@ -63,7 +63,7 @@ namespace GXLightBrowser
             TabWidth = 0;
             RestorePreviousSession = true;
 
-            SelectedTheme = "Classic";
+            SelectedTheme = "Crimson";
             ShowBookmarksBar = true;
             CustomDownloadsFolder = string.Empty;
             AskSavePathBeforeDownload = false;
@@ -178,7 +178,7 @@ namespace GXLightBrowser
                 builder.Append("CompactIconTabs=").Append(CompactIconTabs).AppendLine();
                 builder.Append("TabWidth=").Append(TabWidth).AppendLine();
                 builder.Append("RestorePreviousSession=").Append(RestorePreviousSession).AppendLine();
-                builder.Append("SelectedTheme=").Append(SelectedTheme ?? "Classic").AppendLine();
+                builder.Append("SelectedTheme=").Append(SelectedTheme ?? "Crimson").AppendLine();
                 builder.Append("ShowBookmarksBar=").Append(ShowBookmarksBar).AppendLine();
                 builder.Append("CustomDownloadsFolder=").Append(CustomDownloadsFolder ?? string.Empty).AppendLine();
                 builder.Append("AskSavePathBeforeDownload=").Append(AskSavePathBeforeDownload).AppendLine();

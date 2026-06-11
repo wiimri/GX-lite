@@ -5,7 +5,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string[]]$Assets,
 
-    [string]$Repository = "wiimri/GX-lite",
+    [string]$Repository = "wiimri/Gan-Browser",
     [string]$Title = "",
     [string]$Notes = ""
 )
@@ -13,10 +13,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($Title)) {
-    $Title = "GX Light Browser $Version"
+    $Title = "Gan Browser $Version"
 }
 if ([string]::IsNullOrWhiteSpace($Notes)) {
-    $Notes = "Instalador de GX Light Browser $Version para Windows 10/11 x64."
+    $Notes = "Instalador de Gan Browser $Version para Windows 10/11 x64."
 }
 
 $credentialLines = "protocol=https`nhost=github.com`n`n" | git credential fill
@@ -36,7 +36,7 @@ $headers = @{
     Accept = "application/vnd.github+json"
     Authorization = "Bearer " + $credential["password"]
     "X-GitHub-Api-Version" = "2022-11-28"
-    "User-Agent" = "GXLightBrowser-Release-Script"
+    "User-Agent" = "GanBrowser-Release-Script"
 }
 
 $tag = "v" + $Version

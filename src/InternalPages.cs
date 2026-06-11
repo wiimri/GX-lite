@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -118,10 +118,10 @@ namespace GXLightBrowser
                 ".search button,.link{background:var(--accent);color:" + buttonTextHex + ";border:0;padding:0 18px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}" +
                 ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}.card{border:1px solid var(--border);background:var(--panel);padding:16px}.card b{display:block;margin-bottom:6px}" +
                 "@media(max-width:620px){h1{font-size:34px}.search{flex-direction:column}.search button{padding:13px}}</style></head>" +
-                "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegación ligera con bloqueo nativo, extensiones locales y accesos rápidos.</p>" +
+                "<body><main class='wrap'><section class='box'><h1>Gan Browser</h1><p>Navegación ligera con bloqueo nativo, extensiones locales y accesos rápidos.</p>" +
                 "<form class='search' action='" + searchAction + "' method='get'><input name='" + searchParamName + "' autofocus placeholder='Buscar o escribir una URL en " + searchEngine + "'><button>Buscar</button></form>" +
                 "<div class='grid'><article class='card'><b>Chrome Web Store</b><a class='link' href='" + ChromeStoreUrl + "'>Abrir tienda</a></article>" +
-                "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extensión.</span></article></div>" +
+                "<article class='card'><b>Gan Guard</b><span>Bloqueador y protección de privacidad integrados en el navegador.</span></article></div>" +
                 "</section></main></body></html>";
         }
 
@@ -467,7 +467,7 @@ namespace GXLightBrowser
             body.Append("<p>Preguntar antes de guardar passwords: <b>")
                 .Append(passwordSavingEnabled ? "activado" : "desactivado")
                 .Append("</b>.</p>");
-            body.Append("<p>GX Light nunca guarda una credencial al escribirla. WebView2 muestra su aviso nativo despues de iniciar sesion y solo la conserva cuando eliges guardar.</p>");
+            body.Append("<p>Gan Browser nunca guarda una credencial al escribirla. WebView2 muestra su aviso nativo despues de iniciar sesion y solo la conserva cuando eliges guardar.</p>");
             body.Append("<p>Las credenciales nativas quedan cifradas por Windows dentro del perfil persistente. La boveda de importacion/exportacion tambien usa Windows DPAPI para el usuario actual.</p>");
             body.Append("<p>Entradas importadas en la boveda: <b>").Append(passwordVault.Count).Append("</b>. Usa Menu &gt; Passwords and autofill para importar o exportar CSV.</p>");
 
@@ -644,7 +644,7 @@ namespace GXLightBrowser
             // Sidebar
             html.Append("<div class='sidebar'>");
             html.Append("<div class='sidebar-item active' onclick='scrollToSec(\"apariencia\")'>Apariencia</div>");
-            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"limitadores\")'>Limitadores GX</div>");
+            html.Append("<div class='sidebar-item' onclick='scrollToSec(\"limitadores\")'>Gan Pulse</div>");
             html.Append("<div class='sidebar-item' onclick='scrollToSec(\"privacidad\")'>Privacidad y Seguridad</div>");
             html.Append("<div class='sidebar-item' onclick='scrollToSec(\"inicio\")'>Al Iniciar</div>");
             html.Append("<div class='sidebar-item' onclick='scrollToSec(\"descargas\")'>Descargas</div>");
@@ -680,10 +680,10 @@ namespace GXLightBrowser
             // Theme grid
             html.Append("<div class='card'>");
             html.Append("<div class='setting-title'>Temas del Navegador</div>");
-            html.Append("<div class='setting-desc'>Elige un tema de acento de color para personalizar la apariencia de GX Light.</div>");
+            html.Append("<div class='setting-desc'>Elige un tema de acento propio de Gan Browser.</div>");
             html.Append("<div class='theme-grid'>");
 
-            string[] themes = { "Classic", "Ultraviolet", "Sub Zero", "Frutti Di Mare", "Purple Maze", "Vaporwave", "Rose Quartz", "Hackerman", "Lambda", "After Eight", "Pay To Win", "White Wolf" };
+            string[] themes = { "Crimson", "Aurora", "Glacier", "Coral", "Orchid", "Neon Rose", "Blush", "Terminal", "Amber", "Mint", "Gold", "Silver" };
             string[] colors = { "#FA114F", "#7A3CFF", "#00BFF3", "#FF6347", "#CC3399", "#FF69B4", "#F7CAC9", "#00FF41", "#FDB813", "#00994C", "#FFD700", "#D3D3D3" };
 
             for (int i = 0; i < themes.Length; i++)
@@ -757,9 +757,9 @@ namespace GXLightBrowser
 
             html.Append("</section>");
 
-            // Section 2: Limitadores GX
+            // Section 2: Gan Pulse
             html.Append("<section id='limitadores'>");
-            html.Append("<h2>Limitadores GX</h2>");
+            html.Append("<h2>Gan Pulse</h2>");
             html.Append("<div class='card'>");
 
             // RAM Limiter

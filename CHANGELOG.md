@@ -1,25 +1,41 @@
 # Historial de versiones
 
-Este archivo es el historial estable de GX Light Browser. Sirve como seccion de versiones dentro de GitHub aunque la pagina de GitHub Releases todavia no tenga binarios publicados.
+Este archivo es el historial estable de Gan Browser, anteriormente llamado GX Light Browser.
 
 ## Version actual
 
-- Version publicada: `1.22`
+- Version publicada: `2.0`
 - Fecha: `2026-06-11`
-- Codigo fuente: <https://github.com/wiimri/GX-lite>
-- Tags: <https://github.com/wiimri/GX-lite/tags>
+- Codigo fuente: <https://github.com/wiimri/Gan-Browser>
+- Tags: <https://github.com/wiimri/Gan-Browser/tags>
 
 ## Como funciona el aviso de novedades
 
 Desde la version `1.2`, el navegador lee el manifiesto remoto:
 
 ```text
-https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
+https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json
 ```
 
-Ese archivo indica cual es la version publicada, el nombre de la release, los links and las novedades que debe mostrar `gxlight://updated`.
+Ese archivo indica cual es la version publicada, el nombre de la release, los enlaces y las novedades que debe mostrar `gxlight://updated`.
 
-Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+Si GitHub no responde, Gan Browser usa las notas locales compiladas como respaldo.
+
+## v2.0 - Gan Browser
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- GX Light Browser adopta el nuevo nombre publico `Gan Browser`.
+- `GX Control` pasa a llamarse `Gan Pulse`.
+- La proteccion integrada se presenta como `Gan Guard`.
+- Se incorpora un icono propio para Gan Browser.
+- El instalador, manifiesto, documentacion y repositorio adoptan la nueva marca.
+- La actualizacion conserva el perfil, passwords, favoritos, sesiones, AppId, ruta instalada y protocolo interno existentes.
+- Se publica un instalador permanente legado para que los clientes `1.22` puedan actualizar a `2.0`.
+- El actualizador descarga y verifica primero; solicita reiniciar solamente cuando el instalador ya esta preparado.
+- Las actualizaciones sin comprobacion SHA-256 valida se rechazan.
 
 ## v1.22 - Búsqueda automática de actualizaciones al iniciar
 

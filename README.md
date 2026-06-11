@@ -1,8 +1,8 @@
-# GX Light Browser
+﻿# Gan Browser
 
-Version actual: `1.22`
+Version actual: `2.0`
 
-GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
+Gan Browser es un navegador liviano y enfocado en privacidad para Windows. Usa WebView2 para aprovechar el runtime del sistema y reducir el consumo frente a alternativas basadas en Electron.
 
 Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion sea mas pequena y aproveche el runtime WebView2 que ya viene instalado o disponible en muchos equipos Windows.
 
@@ -19,11 +19,11 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Accesos a Chrome Web Store y Opera Addons.
 - Cierre de pestanas con `x`, click del scroll o `Ctrl+W`.
 - Accesos directos con click del scroll para abrir en una nueva pestana interna.
-- YouTube Shields para quitar contenedores comunes de anuncios, pulsar botones de saltar anuncio y acelerar estados de anuncio dentro del reproductor.
+- YouTube Guard para bloquear instrucciones publicitarias y quitar contenedores comunes de anuncios.
 - Modo de baja memoria para pestanas inactivas.
 - Busqueda rapida de reglas de dominio en el bloqueador nativo.
 - Privacy Firewall integrado para trackers conocidos, endpoints tipo telemetria y parametros de seguimiento.
-- Menu principal inspirado en Opera/Brave con accesos a pestanas, historial, descargas, extensiones, passwords, memoria, shields, settings y herramientas de desarrollador.
+- Menu principal con accesos a pestanas, historial, descargas, extensiones, passwords, memoria, Gan Guard, settings y herramientas de desarrollador.
 - Pagina de historial de sesion.
 - Pagina de descargas de sesion.
 - Pregunta nativa antes de guardar passwords y autofill de WebView2 habilitado.
@@ -34,7 +34,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Arrastrar una pestana sobre otra crea una isla nueva de dos pestanas.
 - Menu contextual de tab islands: crear, colapsar, desplegar, disolver, duplicar, recargar, copiar URLs y cerrar seleccionadas.
 - Suspension real de pestanas inactivas para liberar WebView2 y memoria.
-- Monitor visible de memoria y GX Control configurable.
+- Monitor visible de memoria y Gan Pulse configurable.
 - Pestana de novedades que aparece solo una vez por version instalada.
 - Bitacora acumulativa dentro de Update notes, cargada desde `CHANGELOG.md` en GitHub.
 - Barra de favoritos con apertura en nueva pestana mediante click del scroll.
@@ -51,18 +51,17 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 
 ## Versionado
 
-GX Light Browser usa versiones simples pensadas para el proyecto personal:
+Gan Browser usa versiones simples pensadas para el proyecto personal:
 
-- linea base actual: `1.0`
-- linea de mejora actual: `1.22`
-- cada mejora o correccion del navegador sube la version menor: `1.21`, `1.22`, `1.23` ...
+- linea estable actual: `2.0`
+- cada mejora o correccion del navegador sube la version menor: `2.1`, `2.2`, `2.3` ...
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
 
 Desde `1.2`, el aviso de novedades se lee desde `update.json` en GitHub:
 
 ```text
-https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
+https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json
 ```
 
 Eso permite cambiar el texto de novedades, links y version publicada desde GitHub. Si el navegador no puede conectar a GitHub, usa las notas locales compiladas como respaldo.
@@ -70,15 +69,15 @@ Eso permite cambiar el texto de novedades, links y version publicada desde GitHu
 El historico completo de cambios esta en `CHANGELOG.md`:
 
 ```text
-https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md
+https://github.com/wiimri/Gan-Browser/blob/main/CHANGELOG.md
 ```
 
 `Menu > Buscar actualizaciones` compara la version instalada con `update.json`. Si hay una version mayor,
-descarga y verifica el instalador permanente en segundo plano. Cuando queda listo, GX Light permite
+descarga y verifica el instalador permanente en segundo plano. Cuando queda listo, Gan Browser permite
 reiniciar para aplicarlo; el instalador actualiza los binarios, vuelve a abrir el navegador y conserva
 perfil, passwords, favoritos y sesion.
 
-Por seguridad, GX Light todavia no instala silenciosamente: la descarga y ejecucion deben ser confirmadas.
+Por seguridad, Gan Browser todavia no instala silenciosamente: la descarga y ejecucion deben ser confirmadas.
 La siguiente mejora critica es firmar el instalador y verificar criptograficamente su manifiesto y SHA-256.
 
 Los cambios solo de documentacion pueden ir en GitHub sin subir la version de la aplicacion, porque no cambian el binario ni la experiencia dentro del navegador.
@@ -97,7 +96,7 @@ El script de build descarga el paquete oficial `Microsoft.Web.WebView2` desde Nu
 
 ## Instalador
 
-Desde la version `1.9`, GX Light cuenta con un instalador para Windows 10/11 x64. Desde `1.13`, instala en
+Desde la version `1.9`, Gan Browser cuenta con un instalador para Windows 10/11 x64. Desde `1.13`, instala en
 la carpeta nativa de programas de Windows, normalmente `C:\Program Files\GXLightBrowser`, y solicita
 permisos de administrador. El instalador copia el navegador completo y comprueba los requisitos que
 sistemas modificados como Atlas OS pueden eliminar:
@@ -124,15 +123,27 @@ compatibilidad y reparacion en Atlas OS.
 Para publicar el instalador como asset de GitHub Release usando la credencial segura de Git:
 
 ```powershell
-.\scripts\Publish-Release.ps1 -Version 1.10 -Assets .\dist\GXLightBrowser-Setup-1.10-x64.exe,.\dist\GXLightBrowser-Setup-x64.exe
+.\scripts\Publish-Release.ps1 -Version 2.0 -Assets .\dist\GanBrowser-Setup-2.0-x64.exe,.\dist\GanBrowser-Setup-x64.exe,.\dist\GXLightBrowser-Setup-x64.exe
 ```
 
 El instalador y su comprobacion SHA-256 permanentes pueden descargarse desde:
 
 ```text
-https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.exe
-https://github.com/wiimri/GX-lite/releases/latest/download/GXLightBrowser-Setup-x64.sha256.txt
+https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.exe
+https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.sha256.txt
 ```
+
+## Compatibilidad del cambio de nombre
+
+Gan Browser `2.0` conserva temporalmente varios identificadores internos de GX Light Browser para que la actualizacion no pierda datos:
+
+- perfil y configuracion en `%LOCALAPPDATA%\GXLightBrowser`
+- ejecutable interno `GXLightBrowser.exe`
+- protocolo interno `gxlight://`
+- AppId del instalador
+- instalador permanente legado `GXLightBrowser-Setup-x64.exe` para actualizar clientes `1.22`
+
+Estos nombres son detalles tecnicos heredados y no forman parte de la marca visible.
 
 ## Extensiones
 
@@ -148,7 +159,7 @@ Al importar, seleccionar:
 - una carpeta de extension desempaquetada que contenga `manifest.json`, o
 - una carpeta de version de una extension instalada en Chrome/Edge.
 
-El importador copia la extension al perfil de GX Light y elimina carpetas tipo `_metadata`, porque WebView2 rechaza rutas de extension con carpetas que comienzan con `_`.
+El importador copia la extension al perfil de Gan Browser y elimina carpetas tipo `_metadata`, porque WebView2 rechaza rutas de extension con carpetas que comienzan con `_`.
 
 Importante: WebView2 permite cargar extensiones locales, pero no equivale a instalar directo desde Chrome Web Store con un click. Algunas extensiones que dependen de la UI propia de Chrome, de instalacion desde tienda o de APIs no soportadas pueden requerir adaptacion.
 
@@ -169,16 +180,16 @@ La barra de favoritos queda visible bajo la barra de navegacion.
 El aviso nativo para guardar passwords y el autofill de WebView2 estan habilitados para el perfil de la app en `%LOCALAPPDATA%\GXLightBrowser\Profile`.
 
 `Menu > Passwords and autofill > Preguntar antes de guardar passwords` permite comprobar o cambiar esta
-preferencia. GX Light nunca captura passwords mediante JavaScript ni las guarda al escribirlas: WebView2
+preferencia. Gan Browser nunca captura passwords mediante JavaScript ni las guarda al escribirlas: WebView2
 solo las conserva despues de que el usuario acepta su popup nativo.
 
-GX Light tambien incluye una boveda local para importar/exportar passwords:
+Gan Browser tambien incluye una boveda local para importar/exportar passwords:
 
 - formato CSV: `name,url,username,password,note`
 - las entradas importadas se guardan cifradas para el usuario actual de Windows con DPAPI
 - al exportar se genera un CSV normal en texto visible, asi que hay que tratarlo con cuidado
 
-Importante: WebView2 no expone una API publica para inyectar passwords importadas directamente en su gestor nativo. La boveda de GX Light sirve como companera de import/export; WebView2 sigue manejando el guardado y autofill normal durante la navegacion.
+Importante: WebView2 no expone una API publica para inyectar passwords importadas directamente en su gestor nativo. La boveda de Gan Browser sirve como companera de import/export; WebView2 sigue manejando el guardado y autofill normal durante la navegacion.
 
 La hoja de ruta y recomendaciones estan documentadas en [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 
@@ -210,7 +221,7 @@ El bloqueador actual ya intercepta requests de forma nativa y no depende de APIs
 
 ## Privacy Firewall
 
-GX Light Browser incluye un Privacy Firewall local a nivel navegador. No instala drivers, no modifica Windows Firewall y no actua como VPN; funciona dentro del pipeline de requests del navegador.
+Gan Browser incluye un Privacy Firewall local a nivel navegador. No instala drivers, no modifica Windows Firewall y no actua como VPN; funciona dentro del pipeline de requests del navegador.
 
 Actualmente:
 
@@ -238,7 +249,7 @@ La prueba de firewall revisa bloqueo de trackers y limpieza de parametros de seg
 
 - La barra superior mantiene navegacion, direccion, uso de memoria, limitador de memoria y menu.
 - El resto de funciones vive dentro de `Menu`.
-- `GX 0.8G` abre GX Control con RAM limiter, hard limit, hot tabs killer, CPU policy y network policy.
+- `Pulse 0.8G` abre Gan Pulse con RAM limiter, hard limit, hot tabs killer, CPU policy y network policy.
 - Las pestanas inactivas pasan a bajo consumo.
 - `Menu > Suspend inactive tabs now` descarta WebViews inactivos y mantiene la pestana visible.
 - `Menu > Guardar pestanas al cerrar` conserva la sesion. Al reiniciar, solo la pestana activa crea un

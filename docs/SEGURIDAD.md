@@ -1,12 +1,12 @@
-# Seguridad de GX Light Browser
+﻿# Seguridad de Gan Browser
 
-GX Light debe tratar cualquier dato de navegacion como sensible. El proyecto sigue estas reglas:
+Gan Browser debe tratar cualquier dato de navegacion como sensible. El proyecto sigue estas reglas:
 
 - No interceptar passwords con JavaScript ni guardarlas sin confirmacion.
 - Permitir que WebView2 muestre su aviso nativo y guardar solo cuando el usuario acepta.
 - Conservar passwords nativas en el perfil persistente protegido por Windows.
 - Cifrar la boveda importada con Windows DPAPI para el usuario actual.
-- Mantener telemetria propia desactivada: GX Light no envia historial, passwords ni uso.
+- Mantener telemetria propia desactivada: Gan Browser no envia historial, passwords ni uso.
 - Mostrar advertencia antes de exportar passwords a CSV, porque ese archivo queda en texto visible.
 - Descargar actualizaciones solamente desde el manifiesto y Releases oficiales del repositorio.
 - No instalar actualizaciones silenciosamente ni intentar evitar SmartScreen.
@@ -26,9 +26,9 @@ GX Light debe tratar cualquier dato de navegacion como sensible. El proyecto sig
 
 ## Actualizaciones
 
-`Menu > Buscar actualizaciones` consulta `update.json`. Si hay una version mayor, GX Light descarga el
+`Menu > Buscar actualizaciones` consulta `update.json`. Si hay una version mayor, Gan Browser descarga el
 instalador permanente de GitHub Releases, verifica su SHA-256 y solicita permiso para abrirlo. El
 instalador actualiza los binarios y conserva el perfil ubicado en `%LOCALAPPDATA%\GXLightBrowser`.
 
 Hasta implementar firma y verificacion criptografica completa, el usuario debe confirmar manualmente la
-instalacion y comprobar que la descarga proviene de `github.com/wiimri/GX-lite`.
+instalacion y comprobar que la descarga proviene de `github.com/wiimri/Gan-Browser`.

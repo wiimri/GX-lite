@@ -9,7 +9,7 @@ $Lists = @(
     "https://raw.githubusercontent.com/brave/adblock-lists/master/brave-lists/brave-firstparty-cname.txt"
 )
 
-"! GX Light Browser filter bundle" | Set-Content -Path $Target -Encoding UTF8
+"! Gan Browser filter bundle" | Set-Content -Path $Target -Encoding UTF8
 "! Updated $(Get-Date -Format s)" | Add-Content -Path $Target -Encoding UTF8
 
 foreach ($Url in $Lists) {

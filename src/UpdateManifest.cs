@@ -10,8 +10,8 @@ namespace GXLightBrowser
     [DataContract]
     internal sealed class UpdateManifest
     {
-        public const string ManifestUrl = "https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json";
-        public const string DefaultChangelogUrl = "https://raw.githubusercontent.com/wiimri/GX-lite/main/CHANGELOG.md";
+        public const string ManifestUrl = "https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json";
+        public const string DefaultChangelogUrl = "https://raw.githubusercontent.com/wiimri/Gan-Browser/main/CHANGELOG.md";
 
         [DataMember(Name = "version")]
         public string Version { get; set; }
@@ -46,9 +46,9 @@ namespace GXLightBrowser
                 Version = VersionInfo.CurrentVersion,
                 ReleaseName = VersionInfo.ReleaseName,
                 PublishedAt = "2026-06-11",
-                DownloadUrl = "https://github.com/wiimri/GX-lite/releases",
+                DownloadUrl = "https://github.com/wiimri/Gan-Browser/releases",
                 Sha256Url = string.Empty,
-                SourceUrl = "https://github.com/wiimri/GX-lite",
+                SourceUrl = BrandInfo.RepositoryUrl,
                 ChangelogUrl = DefaultChangelogUrl,
                 ChangelogMarkdown = string.Empty,
                 Highlights = VersionInfo.Highlights()
@@ -77,7 +77,7 @@ namespace GXLightBrowser
         private static UpdateManifest DownloadLatest()
         {
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(ManifestUrl);
-            request.UserAgent = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+            request.UserAgent = "GanBrowser/" + VersionInfo.CurrentVersion;
             request.Timeout = 3500;
             request.ReadWriteTimeout = 3500;
 
@@ -95,7 +95,7 @@ namespace GXLightBrowser
             {
                 string url = string.IsNullOrWhiteSpace(changelogUrl) ? DefaultChangelogUrl : changelogUrl;
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-                request.UserAgent = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                request.UserAgent = "GanBrowser/" + VersionInfo.CurrentVersion;
                 request.Timeout = 3500;
                 request.ReadWriteTimeout = 3500;
                 using (WebResponse response = request.GetResponse())

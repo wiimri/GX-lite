@@ -1,4 +1,4 @@
-using Microsoft.Web.WebView2.Core;
+﻿using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System;
 using System.Collections.Generic;
@@ -75,7 +75,7 @@ namespace GXLightBrowser
 
         public BrowserForm()
         {
-            Text = "GX Light Browser";
+            Text = "Gan Browser";
             MinimumSize = new Size(760, 540);
             Size = new Size(1280, 780);
             BackColor = Theme.Window;
@@ -297,7 +297,7 @@ namespace GXLightBrowser
                     e.SuppressKeyPress = true;
                     if (e.Shift)
                     {
-                        MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light");
+                        MessageBox.Show(this, "Modo privado aun no esta implementado.", "Gan Browser");
                     }
                     else
                     {
@@ -467,7 +467,7 @@ namespace GXLightBrowser
             }
             if (keyData == (Keys.Control | Keys.Shift | Keys.N))
             {
-                MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light");
+                MessageBox.Show(this, "Modo privado aun no esta implementado.", "Gan Browser");
                 return true;
             }
             if (keyData == (Keys.Control | Keys.W))
@@ -936,7 +936,7 @@ namespace GXLightBrowser
                 sourceTab.SiteCompatibilityMode = IsHostOrSubdomain(sourceTab.LastNavigationHost, "crunchyroll.com");
                 if (sourceTab.SiteCompatibilityMode)
                 {
-                    sourceTab.NavigationNotice = "Modo compatibilidad Crunchyroll: Shields pausado para este sitio.";
+                    sourceTab.NavigationNotice = "Modo compatibilidad Crunchyroll: Gan Guard pausado para este sitio.";
                 }
             }
 
@@ -1641,7 +1641,7 @@ namespace GXLightBrowser
         {
             switch (pageName)
             {
-                case "home": return "GX Light";
+                case "home": return "Gan Browser";
                 case "updated":
                 case "novedades": return "Update notes";
                 case "history": return "History";
@@ -1650,9 +1650,9 @@ namespace GXLightBrowser
                 case "bookmarks": return "Bookmarks";
                 case "playlist": return "Playlist";
                 case "memory": return "Memory";
-                case "shields": return "Shields";
+                case "shields": return "Gan Guard";
                 case "settings": return "Settings";
-                default: return "GX Light";
+                default: return "Gan Browser";
             }
         }
 
@@ -1675,7 +1675,7 @@ namespace GXLightBrowser
             menu.Items.Add(CreateMenuItem("Nueva pestaña", "Ctrl+T", async delegate { await CreateTabAsync("about:blank"); }));
             menu.Items.Add(CreateMenuItem("Nueva pestaña en isla", "Alt+T", async delegate { await CreateNewIslandTabAsync(); }));
             menu.Items.Add(CreateMenuItem("Nueva ventana", "Ctrl+N", delegate { StartNewWindow(); }));
-            menu.Items.Add(CreateMenuItem("Nueva ventana privada", "Ctrl+Shift+N", delegate { MessageBox.Show(this, "El modo privado aún no está implementado.", "GX Light"); }));
+            menu.Items.Add(CreateMenuItem("Nueva ventana privada", "Ctrl+Shift+N", delegate { MessageBox.Show(this, "El modo privado aún no está implementado.", "Gan Browser"); }));
             menu.Items.Add(new ToolStripSeparator());
 
             menu.Items.Add(CreateMenuItem("Historial", "Ctrl+H", delegate { NavigateInternal("history"); }));
@@ -1713,9 +1713,9 @@ namespace GXLightBrowser
             menu.Items.Add(new ToolStripSeparator());
 
             menu.Items.Add(CreateMenuItem("Suspender pestañas inactivas ahora", "", delegate { SuspendIdleTabsNow(); }));
-            menu.Items.Add(CreateMenuItem("Control GX / Limitadores", "", delegate { ShowGxControl(); }));
+            menu.Items.Add(CreateMenuItem("Gan Pulse / Limitadores", "", delegate { ShowGxControl(); }));
             menu.Items.Add(CreateMenuItem("Monitor de memoria", "", delegate { NavigateInternal("memory"); }));
-            menu.Items.Add(CreateMenuItem("Escudo / Cortafuegos de Privacidad", "", delegate { NavigateInternal("shields"); }));
+            menu.Items.Add(CreateMenuItem("Gan Guard / Cortafuegos de Privacidad", "", delegate { NavigateInternal("shields"); }));
 
             ToolStripMenuItem restoreSession = CreateMenuItem("Guardar pestañas al cerrar", "", delegate
             {
@@ -1803,21 +1803,10 @@ namespace GXLightBrowser
             {
                 if (showCurrentMessage)
                 {
-                    MessageBox.Show(this, "GX Light " + VersionInfo.CurrentVersion + " ya es la version mas reciente publicada.",
+                    MessageBox.Show(this, "Gan Browser " + VersionInfo.CurrentVersion + " ya es la version mas reciente publicada.",
                         "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 return;
-            }
-
-            if (!showCurrentMessage)
-            {
-                DialogResult res = MessageBox.Show(this,
-                    "Nueva actualización disponible: v" + latest.Version + "\n\n¿Deseas descargarla e instalarla ahora?",
-                    "Actualización disponible", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (res != DialogResult.Yes)
-                {
-                    return;
-                }
             }
 
             await PrepareUpdateAsync(latest, true);
@@ -1832,7 +1821,7 @@ namespace GXLightBrowser
 
             if (!string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) && File.Exists(_preparedUpdateInstallerPath))
             {
-                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia GX Light para aplicarla.";
+                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia Gan Browser para aplicarla.";
                 if (userRequested)
                 {
                     PromptToApplyPreparedUpdate();
@@ -1855,17 +1844,17 @@ namespace GXLightBrowser
                     }
                 }
 
-                if (!string.IsNullOrWhiteSpace(manifest.Sha256Url) && !VerifyInstallerHash(installerPath, hashPath))
+                if (string.IsNullOrWhiteSpace(manifest.Sha256Url) || !VerifyInstallerHash(installerPath, hashPath))
                 {
                     File.Delete(installerPath);
-                    MessageBox.Show(this, "La firma SHA-256 de la actualizacion no coincide. No se aplicara el instalador.",
+                    MessageBox.Show(this, "La actualizacion no tiene una comprobacion SHA-256 valida. No se aplicara el instalador.",
                         "Actualizacion rechazada", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
                 _preparedUpdateInstallerPath = installerPath;
                 _preparedUpdateManifest = manifest;
-                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia GX Light para aplicarla.";
+                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia Gan Browser para aplicarla.";
                 PromptToApplyPreparedUpdate();
             }
             catch (Exception ex)
@@ -1896,7 +1885,7 @@ namespace GXLightBrowser
             string version = _preparedUpdateManifest == null ? string.Empty : " " + _preparedUpdateManifest.Version;
             DialogResult result = MessageBox.Show(this,
                 "La actualizacion" + version + " se descargo y verifico correctamente." + Environment.NewLine +
-                "GX Light puede seguir abierto hasta que decidas aplicarla." + Environment.NewLine + Environment.NewLine +
+                "Gan Browser puede seguir abierto hasta que decidas aplicarla." + Environment.NewLine + Environment.NewLine +
                 "¿Reiniciar y actualizar ahora?",
                 "Actualizacion lista", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
             if (result == DialogResult.Yes)
@@ -2059,7 +2048,7 @@ namespace GXLightBrowser
                 try
                 {
                     string imported = await _extensionImporter.ImportAsync(tab.WebView.CoreWebView2.Profile, dialog.SelectedPath);
-                    MessageBox.Show(this, "Extension cargada: " + imported, "GX Light Browser");
+                    MessageBox.Show(this, "Extension cargada: " + imported, "Gan Browser");
                 }
                 catch (Exception ex)
                 {
@@ -2538,8 +2527,8 @@ namespace GXLightBrowser
             StringBuilder html = new StringBuilder();
             html.AppendLine("<!DOCTYPE NETSCAPE-Bookmark-file-1>");
             html.AppendLine("<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=UTF-8\">");
-            html.AppendLine("<TITLE>GX Light Bookmarks</TITLE>");
-            html.AppendLine("<H1>GX Light Bookmarks</H1>");
+            html.AppendLine("<TITLE>Gan Browser Bookmarks</TITLE>");
+            html.AppendLine("<H1>Gan Browser Bookmarks</H1>");
             html.AppendLine("<DL><p>");
 
             List<string> folders = new List<string>();
@@ -3318,7 +3307,7 @@ namespace GXLightBrowser
         {
             long totalMb = EstimateBrowserMemoryMb();
             _memoryLabel.Text = totalMb + " MB";
-            _memoryLimitButton.Text = _gxControl.RamLimiterEnabled ? "GX " + (_gxControl.MemoryLimitMb / 1024.0).ToString("0.0") + "G" : "GX Off";
+            _memoryLimitButton.Text = _gxControl.RamLimiterEnabled ? "Pulse " + (_gxControl.MemoryLimitMb / 1024.0).ToString("0.0") + "G" : "Pulse Off";
             _memoryLabel.ForeColor = _gxControl.RamLimiterEnabled && totalMb > _gxControl.MemoryLimitMb ? Theme.Warning : Theme.Text;
         }
 
@@ -3698,7 +3687,7 @@ namespace GXLightBrowser
         {
             if (tab == null || tab.Page == null || string.IsNullOrWhiteSpace(tab.Page.Text))
             {
-                return "GX Light";
+                return "Gan Browser";
             }
 
             string title = tab.Page.Text;
@@ -4173,14 +4162,14 @@ namespace GXLightBrowser
                         "<p>Inactive tabs are moved to low-memory mode and can be suspended/discarded to free their WebView.</p>" +
                         InternalPages.GetMemoryProcessesHtml(_environment));
                 case "shields":
-                    return InternalPages.HtmlShell("Shields and Privacy Firewall",
+                    return InternalPages.HtmlShell("Gan Guard y Cortafuegos de Privacidad",
                         "<p>Ad blocker: <b>" + (_adBlockEnabled ? "enabled" : "disabled") + "</b></p>" +
                         "<p>Privacy Firewall: <b>" + (_privacyFirewallEnabled ? "enabled" : "disabled") + "</b></p>" +
                         "<p>Rules: " + _adBlocker.RuleCount + " ad rules, " + _privacyFirewall.RuleCount + " firewall rules.</p>");
                 case "settings":
                     return InternalPages.SettingsHtml(_appSettings);
                 default:
-                    return InternalPages.HtmlShell("GX Light", "<p>Section not found.</p>");
+                    return InternalPages.HtmlShell("Gan Browser", "<p>Section not found.</p>");
             }
         }
 
@@ -4247,7 +4236,7 @@ namespace GXLightBrowser
             }
 
             File.WriteAllText(AppPaths.Filters,
-                "! GX Light local filters" + Environment.NewLine +
+                "! Gan Browser local filters" + Environment.NewLine +
                 "! Add EasyList/EasyPrivacy content here or run scripts\\Update-Filters.ps1" + Environment.NewLine,
                 System.Text.Encoding.UTF8);
         }
