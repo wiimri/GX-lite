@@ -1,6 +1,6 @@
 # GX Light Browser
 
-Version actual: `1.15`
+Version actual: `1.16`
 
 GX Light Browser es un prototipo de navegador liviano para Windows, inspirado en el flujo de trabajo de Opera GX y Brave, sin copiar marcas, identidad visual ni elementos protegidos de esos navegadores.
 
@@ -36,6 +36,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Suspension real de pestanas inactivas para liberar WebView2 y memoria.
 - Monitor visible de memoria y GX Control configurable.
 - Pestana de novedades que aparece solo una vez por version instalada.
+- Bitacora acumulativa dentro de Update notes, cargada desde `CHANGELOG.md` en GitHub.
 - Barra de favoritos con apertura en nueva pestana mediante click del scroll.
 - Importacion/exportacion de bookmarks en HTML compatible con navegadores.
 - Gestor de bookmarks con carpetas, busqueda, seleccion multiple y eliminacion masiva.
@@ -53,7 +54,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 GX Light Browser usa versiones simples pensadas para el proyecto personal:
 
 - linea base actual: `1.0`
-- linea de mejora actual: `1.15`
+- linea de mejora actual: `1.16`
 - cada mejora o correccion del navegador sube la version menor: `1.12`, `1.13`, ... `1.19`
 - despues de `1.19`, la siguiente linea pasa a `2.0`
 
@@ -75,7 +76,7 @@ https://github.com/wiimri/GX-lite/blob/main/CHANGELOG.md
 
 `Menu > Buscar actualizaciones` compara la version instalada con `update.json`. Si hay una version mayor,
 descarga el instalador permanente, verifica su SHA-256 y solicita abrirlo. Al ejecutarlo, actualiza los
-binarios y conserva perfil, passwords, favoritos y sesion.
+binarios, cierra el navegador de forma controlada y conserva perfil, passwords, favoritos y sesion.
 
 Por seguridad, GX Light todavia no instala silenciosamente: la descarga y ejecucion deben ser confirmadas.
 La siguiente mejora critica es firmar el instalador y verificar criptograficamente su manifiesto y SHA-256.
@@ -106,6 +107,10 @@ sistemas modificados como Atlas OS pueden eliminar:
 - `Microsoft.Web.WebView2.Core.dll`.
 - `Microsoft.Web.WebView2.WinForms.dll`.
 - `WebView2Loader.dll`.
+
+Cada instalacion o actualizacion recrea el acceso directo comun del escritorio y del menu Inicio. Los
+accesos directos personales obsoletos se eliminan solamente despues de completar correctamente la
+instalacion, evitando que una actualizacion deje un icono apuntando a una ruta inexistente.
 
 Para construirlo:
 

@@ -4,8 +4,8 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.15`
-- Fecha: `2026-06-10`
+- Version publicada: `1.16`
+- Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
 
@@ -20,6 +20,30 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.16 - Motor interno, privacidad y actualizacion reparada
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- Los modelos de historial, descargas, favoritos y passwords se separaron de `BrowserForm.cs`.
+- Las paginas internas se trasladaron a `InternalPages.cs`, reduciendo el nucleo del navegador en mas de 600 lineas.
+- Se corrigieron las rutas `gxlight://home` y `gxlight://updated` para evitar la pagina `Section not found`.
+- Update notes descarga y muestra la bitacora acumulativa de `CHANGELOG.md`, conservando todas las versiones anteriores.
+- El menu contextual permite suspender manualmente todas las pestanas seleccionadas.
+- El limitador de RAM evita suspensiones en cascada mientras Windows libera procesos WebView2.
+- El monitor de memoria cuenta solamente los procesos pertenecientes al entorno WebView2 de GX Light.
+- El fallback de favicons tolera APIs no implementadas y continua con la descarga de `/favicon.ico`.
+- WebView2 activa el opt-out de telemetria y argumentos adicionales contra reportes en segundo plano.
+- El analizador de filtros conserva las rutas de excepciones ABP y evita permitir dominios completos por error.
+- Se agregaron reglas integradas para endpoints publicitarios y de telemetria de YouTube.
+- YouTube Shields oculta anuncios antes de mostrarlos, acelera su deteccion y restaura audio y velocidad al volver al contenido.
+- El navegador deja de mantener un mutex que impedia al instalador completar una actualizacion iniciada desde GX Light.
+- El actualizador solicita a Inno Setup cerrar aplicaciones de forma controlada antes de reemplazar binarios.
+- El acceso directo comun del escritorio y del menu Inicio se crea siempre, sin depender de una opcion desmarcable.
+- Los accesos directos personales obsoletos se eliminan solamente despues de completar correctamente la instalacion.
+- La migracion mantiene intacto el perfil ubicado en `%LOCALAPPDATA%\GXLightBrowser`.
 
 ## v1.15 - Pestanas adaptables con favicon permanente
 

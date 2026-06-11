@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 $Bin = Join-Path $Root "bin"
 $Out = Join-Path $Bin "PrivacyFirewallProbe.exe"
+$AdBlockerOut = Join-Path $Bin "AdBlockerProbe.exe"
 $Csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 
 if (!(Test-Path $Csc)) {
@@ -23,4 +24,19 @@ if ($LASTEXITCODE -ne 0) {
 & $Out
 if ($LASTEXITCODE -ne 0) {
     throw "Privacy firewall probe failed with exit code $LASTEXITCODE."
+}
+
+& $Csc /nologo /target:exe /platform:x64 `
+    /out:$AdBlockerOut `
+    /reference:System.dll `
+    (Join-Path $Root "src\AdBlocker.cs") `
+    (Join-Path $Root "tests\AdBlockerProbe.cs")
+
+if ($LASTEXITCODE -ne 0) {
+    throw "Ad blocker probe compilation failed with exit code $LASTEXITCODE."
+}
+
+& $AdBlockerOut
+if ($LASTEXITCODE -ne 0) {
+    throw "Ad blocker probe failed with exit code $LASTEXITCODE."
 }

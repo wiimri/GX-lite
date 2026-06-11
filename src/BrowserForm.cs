@@ -466,7 +466,7 @@ namespace GXLightBrowser
 
             CoreWebView2EnvironmentOptions options = new CoreWebView2EnvironmentOptions();
             options.AreBrowserExtensionsEnabled = true;
-            options.AdditionalBrowserArguments = "--disable-features=HeavyAdPrivacyMitigations";
+            options.AdditionalBrowserArguments = "--disable-features=HeavyAdPrivacyMitigations,Heartbeat --disable-telemetry --disable-breakpad --no-report-upload --telemetry-disable";
             try
             {
                 _environment = await CoreWebView2Environment.CreateAsync(null, AppPaths.Profile, options);
@@ -1104,12 +1104,12 @@ namespace GXLightBrowser
                 string pageName = normalized.Substring("gxlight://".Length).Trim().ToLowerInvariant();
                 if (pageName == "home")
                 {
-                    web.NavigateToString(HomeHtml());
+                    web.NavigateToString(InternalPages.HomeHtml());
                     _address.Text = HomeUrl;
                 }
-                else if (pageName == "novedades")
+                else if (pageName == "updated" || pageName == "novedades")
                 {
-                    web.NavigateToString(UpdateNoticeHtml());
+                    web.NavigateToString(InternalPages.UpdateNoticeHtml(_updateManifest));
                     _address.Text = UpdatedUrl;
                 }
                 else if (pageName == "extensions")
@@ -1179,6 +1179,9 @@ namespace GXLightBrowser
         {
             switch (pageName)
             {
+                case "home": return "GX Light";
+                case "updated":
+                case "novedades": return "Update notes";
                 case "history": return "History";
                 case "downloads": return "Downloads";
                 case "passwords": return "Passwords";
@@ -2480,6 +2483,7 @@ namespace GXLightBrowser
             menu.Items.Add("Reload selected tabs", null, async delegate { await ReloadSelectedTabsAsync(tab); });
             menu.Items.Add("Copy page addresses", null, delegate { CopySelectedTabAddresses(tab); });
             menu.Items.Add("Duplicate selected tabs", null, async delegate { await DuplicateSelectedTabsAsync(tab); });
+            menu.Items.Add("Suspend selected tabs", null, delegate { SuspendSelectedTabs(tab); });
             menu.Items.Add(tab.IsPinned ? "Unpin tab" : "Pin tab", null, delegate
             {
                 tab.IsPinned = !tab.IsPinned;
@@ -2605,6 +2609,19 @@ namespace GXLightBrowser
             for (int i = 0; i < selected.Count; i++)
             {
                 await CreateTabAsync(GetTabUrl(selected[i]));
+            }
+        }
+
+        private void SuspendSelectedTabs(BrowserTab fallback)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                BrowserTab tab = selected[i];
+                if (tab != null && !tab.IsSuspended && tab.WebView != null)
+                {
+                    SuspendTab(tab);
+                }
             }
         }
 
@@ -2757,22 +2774,30 @@ namespace GXLightBrowser
                 Process current = Process.GetCurrentProcess();
                 total += current.WorkingSet64;
 
-                Process[] webviews = Process.GetProcessesByName("msedgewebview2");
-                for (int i = 0; i < webviews.Length; i++)
+                if (_environment != null)
                 {
                     try
                     {
-                        if (webviews[i].StartTime.ToUniversalTime() >= _startedUtc.AddSeconds(-10))
+                        var infos = _environment.GetProcessInfos();
+                        if (infos != null)
                         {
-                            total += webviews[i].WorkingSet64;
+                            foreach (var info in infos)
+                            {
+                                try
+                                {
+                                    using (Process p = Process.GetProcessById((int)info.ProcessId))
+                                    {
+                                        total += p.WorkingSet64;
+                                    }
+                                }
+                                catch
+                                {
+                                }
+                            }
                         }
                     }
                     catch
                     {
-                    }
-                    finally
-                    {
-                        webviews[i].Dispose();
                     }
                 }
             }
@@ -2797,11 +2822,16 @@ namespace GXLightBrowser
                 return;
             }
 
-            SuspendOldestInactiveTab();
+            if (SuspendOldestInactiveTab())
+            {
+                total -= 100; // virtual decrement to prevent OS latency cascading suspensions
+            }
+
             if (_gxControl.HardMemoryLimit)
             {
-                while (EstimateBrowserMemoryMb() > _gxControl.MemoryLimitMb && SuspendOldestInactiveTab())
+                while (total > _gxControl.MemoryLimitMb && SuspendOldestInactiveTab())
                 {
+                    total -= 100; // virtual decrement
                 }
             }
         }
@@ -3284,6 +3314,8 @@ namespace GXLightBrowser
     '.ytp-ad-overlay-container',
     '.ytp-ad-player-overlay',
     '.ytp-ad-image-overlay',
+    '.ytp-ad-module',
+    '.video-ads',
     '#player-ads',
     '#masthead-ad'
   ];
@@ -3295,13 +3327,49 @@ namespace GXLightBrowser
     'button.ytp-ad-skip-button-modern',
     'button[aria-label^=""Skip""]',
     'button[aria-label^=""Saltar""]',
-    'button[aria-label^=""Omitir""]'
+    'button[aria-label^=""Omitir""]',
+    '.ytp-ad-skip-button-container'
   ];
+
+  function injectStyle() {
+    if (document.getElementById('gxlight-ad-blocker-css')) return;
+    const target = document.head || document.documentElement || document.body;
+    if (!target) return;
+    const style = document.createElement('style');
+    style.id = 'gxlight-ad-blocker-css';
+    style.textContent = `
+      ytd-ad-slot-renderer,
+      ytd-promoted-video-renderer,
+      ytd-display-ad-renderer,
+      ytd-companion-slot-renderer,
+      ytd-action-companion-ad-renderer,
+      ytd-in-feed-ad-layout-renderer,
+      ytd-player-legacy-desktop-watch-ads-renderer,
+      ytd-engagement-panel-section-list-renderer[target-id=""engagement-panel-ads""],
+      .ytp-ad-overlay-container,
+      .ytp-ad-player-overlay,
+      .ytp-ad-image-overlay,
+      .ytp-ad-module,
+      .video-ads,
+      #player-ads,
+      #masthead-ad {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    `;
+    target.appendChild(style);
+  }
 
   function clickSkips() {
     for (const selector of skipSelectors) {
       document.querySelectorAll(selector).forEach((node) => {
-        if (node && typeof node.click === 'function') node.click();
+        if (node && typeof node.click === 'function') {
+          node.click();
+        }
       });
     }
   }
@@ -3309,25 +3377,43 @@ namespace GXLightBrowser
   function removeAdNodes() {
     for (const selector of adSelectors) {
       document.querySelectorAll(selector).forEach((node) => {
-        if (!node || !node.parentNode) return;
-        node.remove();
+        if (node && node.parentNode) {
+          node.remove();
+        }
       });
     }
   }
 
   let wasInAd = false;
+  let skippedCurrentAd = false;
+  let previousMuted = false;
+  let previousRate = 1.0;
   function recoverVideoPlayback() {
     const player = document.querySelector('.html5-video-player');
     if (!player) return;
-    const inAd = player.classList.contains('ad-showing');
+
+    const inAd = player.classList.contains('ad-showing') ||
+                 player.classList.contains('ad-interrupting');
+
     document.querySelectorAll('video').forEach((video) => {
       try {
         if (inAd) {
+          if (!wasInAd) {
+            previousMuted = video.muted;
+            previousRate = video.playbackRate || 1.0;
+            skippedCurrentAd = false;
+          }
           video.muted = true;
-          video.playbackRate = 8;
+          if (!skippedCurrentAd && Number.isFinite(video.duration) && video.duration > 0) {
+            video.currentTime = video.duration - 0.1;
+            skippedCurrentAd = true;
+          }
+          video.playbackRate = 16.0;
           if (video.paused) video.play().catch(() => {});
         } else if (wasInAd) {
-          video.playbackRate = 1;
+          video.muted = previousMuted;
+          video.playbackRate = previousRate;
+          skippedCurrentAd = false;
           if (video.paused) video.play().catch(() => {});
         }
       } catch (_) {}
@@ -3336,6 +3422,7 @@ namespace GXLightBrowser
   }
 
   function run() {
+    injectStyle();
     clickSkips();
     removeAdNodes();
     recoverVideoPlayback();
@@ -3343,7 +3430,7 @@ namespace GXLightBrowser
 
   window.__gxLightRunYouTubeShields = run;
   run();
-  setInterval(run, 350);
+  setInterval(run, 150);
   const observe = () => {
     if (!document.documentElement) return;
     new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
@@ -3357,18 +3444,23 @@ namespace GXLightBrowser
         {
             switch (pageName)
             {
+                case "home":
+                    return InternalPages.HomeHtml();
+                case "updated":
+                case "novedades":
+                    return InternalPages.UpdateNoticeHtml(_updateManifest);
                 case "history":
-                    return HtmlShell("History", HistoryHtml());
+                    return InternalPages.HtmlShell("History", InternalPages.HistoryHtml(_history));
                 case "downloads":
-                    return HtmlShell("Downloads", DownloadsHtml());
+                    return InternalPages.HtmlShell("Downloads", InternalPages.DownloadsHtml(_downloads));
                 case "passwords":
-                    return HtmlShell("Passwords and autofill", PasswordsHtml());
+                    return InternalPages.HtmlShell("Passwords and autofill", InternalPages.PasswordsHtml(_passwordSavingEnabled, _passwordVault));
                 case "bookmarks":
-                    return BookmarksHtml();
+                    return InternalPages.BookmarksHtml(_bookmarks);
                 case "playlist":
-                    return HtmlShell("Playlist", PlaylistHtml());
+                    return InternalPages.HtmlShell("Playlist", InternalPages.PlaylistHtml(_playlist));
                 case "memory":
-                    return HtmlShell("Memory monitor",
+                    return InternalPages.HtmlShell("Memory monitor",
                         "<p>Estimated browser memory: <b>" + EstimateBrowserMemoryMb() + " MB</b></p>" +
                         "<p>RAM limiter: <b>" + (_gxControl.RamLimiterEnabled ? (_gxControl.MemoryLimitMb / 1024.0).ToString("0.0") + " GB" : "Off") + "</b></p>" +
                         "<p>Hard limit: <b>" + (_gxControl.HardMemoryLimit ? "On" : "Off") + "</b></p>" +
@@ -3377,17 +3469,17 @@ namespace GXLightBrowser
                         "<p>Network limiter policy: <b>" + (_gxControl.NetworkLimiterEnabled ? _gxControl.NetworkProfile : "Off") + "</b></p>" +
                         "<p>Low Resource Mode: <b>" + (_gxControl.LowResourcesModeEnabled ? "On (Max active: " + _gxControl.MaxActiveTabs + ")" : "Off") + "</b></p>" +
                         "<p>Inactive tabs are moved to low-memory mode and can be suspended/discarded to free their WebView.</p>" +
-                        GetMemoryProcessesHtml());
+                        InternalPages.GetMemoryProcessesHtml(_environment));
                 case "shields":
-                    return HtmlShell("Shields and Privacy Firewall",
+                    return InternalPages.HtmlShell("Shields and Privacy Firewall",
                         "<p>Ad blocker: <b>" + (_adBlockEnabled ? "enabled" : "disabled") + "</b></p>" +
                         "<p>Privacy Firewall: <b>" + (_privacyFirewallEnabled ? "enabled" : "disabled") + "</b></p>" +
                         "<p>Rules: " + _adBlocker.RuleCount + " ad rules, " + _privacyFirewall.RuleCount + " firewall rules.</p>");
                 case "settings":
-                    return HtmlShell("Settings",
+                    return InternalPages.HtmlShell("Settings",
                         "<p>Low-resource defaults are active: inactive tabs use low-memory mode, menu-first commands, and local-only privacy controls.</p>");
                 default:
-                    return HtmlShell("GX Light", "<p>Section not found.</p>");
+                    return InternalPages.HtmlShell("GX Light", "<p>Section not found.</p>");
             }
         }
 
@@ -3418,322 +3510,7 @@ namespace GXLightBrowser
                     body.Append("</table>");
                 }
             }
-
-            return HtmlShell("Extensions", body.ToString());
-        }
-
-        private string PlaylistHtml()
-        {
-            StringBuilder body = new StringBuilder();
-            body.Append("<p>Guarda videos y paginas multimedia para volver a abrirlos rapidamente. La Playlist no copia ni evita contenido protegido por DRM.</p>");
-            if (_playlist.Count == 0)
-            {
-                body.Append("<p>No hay elementos guardados. Usa Menu &gt; Playlist &gt; Add current page.</p>");
-                return body.ToString();
-            }
-
-            body.Append("<table><tr><th>Titulo</th><th>Agregado</th><th>Acciones</th></tr>");
-            for (int i = 0; i < _playlist.Count; i++)
-            {
-                PlaylistEntry item = _playlist[i];
-                string encodedUrl = Convert.ToBase64String(Encoding.UTF8.GetBytes(item.Url ?? string.Empty));
-                body.Append("<tr><td><b>").Append(EscapeHtml(item.Title)).Append("</b><br><span>")
-                    .Append(EscapeHtml(item.Url)).Append("</span></td><td>")
-                    .Append(item.AddedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td><td>")
-                    .Append("<button onclick=\"chrome.webview.postMessage('gxlight:playlist:open:").Append(encodedUrl).Append("')\">Abrir</button> ")
-                    .Append("<button onclick=\"chrome.webview.postMessage('gxlight:playlist:delete:").Append(encodedUrl).Append("')\">Eliminar</button>")
-                    .Append("</td></tr>");
-            }
-            body.Append("</table>");
-            return body.ToString();
-        }
-
-        private string HistoryHtml()
-        {
-            if (_history.Count == 0)
-            {
-                return "<p>No history in this session yet.</p>";
-            }
-
-            StringBuilder body = new StringBuilder();
-            body.Append("<table><tr><th>Time</th><th>Title</th><th>URL</th></tr>");
-            int count = Math.Min(100, _history.Count);
-            for (int i = 0; i < count; i++)
-            {
-                HistoryEntry entry = _history[i];
-                body.Append("<tr><td>" + entry.VisitedUtc.ToLocalTime().ToString("HH:mm") + "</td><td>" +
-                    EscapeHtml(entry.Title) + "</td><td><a href='" + EscapeHtml(entry.Url) + "'>" +
-                    EscapeHtml(entry.Url) + "</a></td></tr>");
-            }
-            body.Append("</table>");
-            return body.ToString();
-        }
-
-        private string DownloadsHtml()
-        {
-            if (_downloads.Count == 0)
-            {
-                return "<p>No downloads in this session yet.</p>";
-            }
-
-            StringBuilder body = new StringBuilder();
-            body.Append("<table><tr><th>Time</th><th>File</th><th>Status</th><th>Path</th></tr>");
-            for (int i = 0; i < _downloads.Count; i++)
-            {
-                DownloadEntry entry = _downloads[i];
-                body.Append("<tr><td>" + entry.StartedUtc.ToLocalTime().ToString("HH:mm") + "</td><td>" +
-                    EscapeHtml(entry.FileName) + "</td><td>" + EscapeHtml(entry.State) + "</td><td>" +
-                    EscapeHtml(entry.Path) + "</td></tr>");
-            }
-            body.Append("</table>");
-            return body.ToString();
-        }
-
-        private static string SafeJsString(string value)
-        {
-            if (string.IsNullOrEmpty(value)) return "";
-            return value.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
-        }
-
-        private string BookmarksJson()
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.Append("[");
-            for (int i = 0; i < _bookmarks.Count; i++)
-            {
-                BookmarkEntry entry = _bookmarks[i];
-                if (i > 0) sb.Append(",");
-                sb.Append("{")
-                  .Append("\"title\":\"").Append(SafeJsString(entry.Title)).Append("\",")
-                  .Append("\"url\":\"").Append(SafeJsString(entry.Url)).Append("\",")
-                  .Append("\"folder\":\"").Append(SafeJsString(entry.Folder)).Append("\",")
-                  .Append("\"created\":").Append((long)(entry.CreatedUtc - new DateTime(1970, 1, 1)).TotalMilliseconds)
-                  .Append("}");
-            }
-            sb.Append("]");
-            return sb.ToString();
-        }
-
-        private string BookmarksHtml()
-        {
-            string json = BookmarksJson();
-            StringBuilder h = new StringBuilder();
-            h.Append("<!doctype html><html><head><meta charset='utf-8'>");
-            h.Append("<meta name='viewport' content='width=device-width,initial-scale=1'>");
-            h.Append("<title>Bookmarks Manager</title>");
-            h.Append("<style>");
-            h.Append("*{box-sizing:border-box}");
-            h.Append("body{margin:0;background:#0d0f14;color:#eef7fa;font-family:'Segoe UI',Arial,sans-serif;display:flex;min-height:100vh}");
-            h.Append("aside{width:240px;background:#13171f;border-right:1px solid #222936;padding:20px;display:flex;flex-direction:column;gap:15px}");
-            h.Append("aside h2{color:#72f5ff;font-size:16px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px;display:flex;align-items:center;gap:8px}");
-            h.Append(".folder-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:5px}");
-            h.Append(".folder-item{padding:8px 12px;cursor:pointer;border-radius:4px;transition:background .2s,color .2s;display:flex;align-items:center;gap:8px;color:#aeb8c4;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}");
-            h.Append(".folder-item:hover,.folder-item.active{background:#1c2331;color:#72f5ff}");
-            h.Append(".btn-new-folder{background:transparent;border:1px dashed #484d5c;color:#aeb8c4;padding:10px;border-radius:4px;cursor:pointer;text-align:center;font-size:13px;transition:border-color .2s,color .2s;margin-top:10px}");
-            h.Append(".btn-new-folder:hover{border-color:#72f5ff;color:#72f5ff}");
-            h.Append("main{flex:1;padding:30px;display:flex;flex-direction:column;gap:16px;outline:none}");
-            h.Append(".header-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}");
-            h.Append("h1{color:#72f5ff;font-size:28px;margin:0}");
-            h.Append(".toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}");
-            h.Append(".search-box{background:#171a22;border:1px solid #2e3440;border-radius:4px;padding:8px 14px;width:280px;display:flex;align-items:center}");
-            h.Append(".search-box input{background:transparent;border:none;color:#fff;font-size:14px;outline:none;width:100%}");
-            h.Append(".btn-toolbar{background:#1c2331;border:1px solid #2e3440;color:#aeb8c4;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px;transition:all .2s;white-space:nowrap}");
-            h.Append(".btn-toolbar:hover{border-color:#72f5ff;color:#72f5ff}");
-            h.Append(".btn-toolbar.danger{border-color:rgba(255,107,107,.2);color:#ff6b6b}");
-            h.Append(".btn-toolbar.danger:hover{background:rgba(255,107,107,.13);border-color:#ff6b6b}");
-            h.Append(".btn-toolbar:disabled{opacity:.35;cursor:not-allowed}");
-            h.Append(".selection-info{color:#72f5ff;font-size:13px;font-weight:600;min-width:80px}");
-            h.Append(".table-container{background:#13171f;border:1px solid #222936;border-radius:6px;overflow:auto;flex:1}");
-            h.Append("table{border-collapse:collapse;width:100%;text-align:left}");
-            h.Append("th,td{padding:10px 14px;border-bottom:1px solid #222936;font-size:13px}");
-            h.Append("th{background:#1c2331;color:#72f5ff;font-weight:600;text-transform:uppercase;font-size:11px;letter-spacing:.5px;position:sticky;top:0;z-index:1}");
-            h.Append("tr:last-child td{border-bottom:none}");
-            h.Append("tr:hover td{background:#171c26}");
-            h.Append("tr.selected td{background:#1a2a35}");
-            h.Append("a{color:#72f5ff;text-decoration:none;word-break:break-all}");
-            h.Append("a:hover{text-decoration:underline}");
-            h.Append(".actions{display:flex;align-items:center;gap:8px}");
-            h.Append(".btn-delete{background:transparent;border:none;color:#ff6b6b;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background .2s;font-size:13px}");
-            h.Append(".btn-delete:hover{background:rgba(255,107,107,.15)}");
-            h.Append("select{background:#171a22;border:1px solid #2e3440;color:#eef7fa;padding:4px 8px;border-radius:4px;outline:none;cursor:pointer;font-size:12px}");
-            h.Append("select:hover{border-color:#72f5ff}");
-            h.Append("input[type=checkbox]{accent-color:#72f5ff;width:16px;height:16px;cursor:pointer}");
-            h.Append(".hint{color:#555e6e;font-size:12px;margin-top:4px}");
-            h.Append("</style></head><body>");
-
-            // Sidebar
-            h.Append("<aside>");
-            h.Append("<h2>\ud83d\udcc1 Carpetas</h2>");
-            h.Append("<ul class='folder-list' id='folderList'></ul>");
-            h.Append("<button class='btn-new-folder' onclick='createNewFolder()'>+ Nueva Carpeta</button>");
-            h.Append("</aside>");
-
-            // Main area
-            h.Append("<main id='mainArea' tabindex='0'>");
-            h.Append("<div class='header-bar'><h1 id='pageTitle'>Todos los favoritos</h1></div>");
-            h.Append("<div class='toolbar'>");
-            h.Append("<div class='search-box'><input type='text' id='searchInput' placeholder='Buscar favoritos...' oninput='renderBookmarks()'></div>");
-            h.Append("<button class='btn-toolbar' onclick='toggleSelectAll()' id='btnSelectAll'>Seleccionar todos</button>");
-            h.Append("<button class='btn-toolbar danger' onclick='deleteSelected()' id='btnDeleteSelected' disabled>Eliminar seleccionados</button>");
-            h.Append("<button class='btn-toolbar danger' onclick='deleteAll()' id='btnDeleteAll'>Eliminar todos</button>");
-            h.Append("<span class='selection-info' id='selectionInfo'></span>");
-            h.Append("</div>");
-            h.Append("<div class='table-container'><table><thead><tr>");
-            h.Append("<th style='width:40px'><input type='checkbox' id='headerCheckbox' onchange='toggleSelectAll()'></th>");
-            h.Append("<th>Titulo</th><th>URL</th><th>Carpeta</th><th>Acciones</th>");
-            h.Append("</tr></thead><tbody id='bookmarksTableBody'></tbody></table></div>");
-            h.Append("<div class='hint'>Tip: selecciona varios favoritos con los checkboxes y presiona <b>Suprimir</b> (Delete) para eliminarlos. <b>Ctrl+A</b> selecciona todos.</div>");
-            h.Append("</main>");
-
-            // JavaScript
-            h.Append("<script>");
-            h.Append("var bookmarks=").Append(json).Append(";");
-            h.Append("var activeFilter='all';");
-            h.Append("var selected=new Set();");
-            h.Append("for(var _i=0;_i<bookmarks.length;_i++){bookmarks[_i].originalIndex=_i;}");
-
-            // Helpers
-            h.Append("function b64(s){try{return btoa(unescape(encodeURIComponent(s||'')));}catch(e){return '';}}");
-            h.Append("function escapeHtml(s){if(!s)return '';var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML;}");
-
-            // getFolders
-            h.Append("function getFolders(){var f=[];for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];if(b.folder&&b.folder.trim()!==''&&f.indexOf(b.folder)===-1)f.push(b.folder);}return f;}");
-
-            // getVisibleIndices
-            h.Append("function getVisibleIndices(){var s=document.getElementById('searchInput').value.toLowerCase();var r=[];");
-            h.Append("for(var i=0;i<bookmarks.length;i++){var b=bookmarks[i];");
-            h.Append("if(activeFilter==='all'){if(!b.url||b.url.trim()==='')continue;}else{if(b.folder!==activeFilter)continue;}");
-            h.Append("if(s&&!((b.title&&b.title.toLowerCase().indexOf(s)>=0)||(b.url&&b.url.toLowerCase().indexOf(s)>=0)))continue;");
-            h.Append("r.push(b.originalIndex);}return r;}");
-
-            // updateSelectionUI
-            h.Append("function updateSelectionUI(){var c=selected.size;");
-            h.Append("document.getElementById('selectionInfo').innerText=c>0?c+' seleccionado'+(c>1?'s':''):'';");
-            h.Append("document.getElementById('btnDeleteSelected').disabled=c===0;");
-            h.Append("var vis=getVisibleIndices();var all=vis.length>0;");
-            h.Append("for(var i=0;i<vis.length;i++){if(!selected.has(vis[i])){all=false;break;}}");
-            h.Append("document.getElementById('headerCheckbox').checked=all&&vis.length>0;");
-            h.Append("document.getElementById('btnSelectAll').innerText=(all&&vis.length>0)?'Deseleccionar todos':'Seleccionar todos';}");
-
-            // toggleCheck
-            h.Append("function toggleCheck(idx){if(selected.has(idx))selected.delete(idx);else selected.add(idx);");
-            h.Append("var row=document.querySelector('tr[data-idx=\"'+idx+'\"]');if(row)row.className=selected.has(idx)?'selected':'';");
-            h.Append("updateSelectionUI();}");
-
-            // toggleSelectAll
-            h.Append("function toggleSelectAll(){var vis=getVisibleIndices();var all=true;");
-            h.Append("for(var i=0;i<vis.length;i++){if(!selected.has(vis[i])){all=false;break;}}");
-            h.Append("for(var i=0;i<vis.length;i++){if(all)selected.delete(vis[i]);else selected.add(vis[i]);}");
-            h.Append("renderBookmarks();updateSelectionUI();}");
-
-            // deleteSelected
-            h.Append("function deleteSelected(){if(selected.size===0)return;");
-            h.Append("if(!confirm('\\u00bfEliminar '+selected.size+' favorito'+(selected.size>1?'s':'')+'?'))return;");
-            h.Append("var payload='';selected.forEach(function(idx){var b=bookmarks[idx];");
-            h.Append("if(payload.length>0)payload+=';';payload+=b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder);});");
-            h.Append("selected.clear();window.chrome.webview.postMessage('gxlight:bookmarks:delete-batch:'+payload);}");
-
-            // deleteAll
-            h.Append("function deleteAll(){if(bookmarks.length===0)return;");
-            h.Append("if(!confirm('\\u00bfSeguro que quieres ELIMINAR TODOS los favoritos? Esta accion no se puede deshacer.'))return;");
-            h.Append("selected.clear();window.chrome.webview.postMessage('gxlight:bookmarks:delete-all');}");
-
-            // renderFolders
-            h.Append("function renderFolders(){var el=document.getElementById('folderList');var folders=getFolders();var out='';");
-            h.Append("out+='<li class=\"folder-item '+(activeFilter==='all'?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"all\">\\ud83d\\udcc2 Todos</li>';");
-            h.Append("out+='<li class=\"folder-item '+(activeFilter==='Favorites bar'?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"Favorites bar\">\\u2b50 Barra</li>';");
-            h.Append("for(var i=0;i<folders.length;i++){var f=folders[i];if(f==='Favorites bar')continue;");
-            h.Append("out+='<li class=\"folder-item '+(activeFilter===f?'active':'')+'\" onclick=\"filterFolder(this)\" data-folder=\"'+escapeHtml(f)+'\">\\ud83d\\udcc1 '+escapeHtml(f)+'</li>';}");
-            h.Append("el.innerHTML=out;}");
-
-            // filterFolder (uses data-folder attribute, no inline escaping needed)
-            h.Append("function filterFolder(el){activeFilter=el.getAttribute('data-folder');");
-            h.Append("document.getElementById('pageTitle').innerText=activeFilter==='all'?'Todos los favoritos':activeFilter;");
-            h.Append("renderFolders();renderBookmarks();updateSelectionUI();}");
-
-            // renderBookmarks
-            h.Append("function renderBookmarks(){var tbody=document.getElementById('bookmarksTableBody');var folders=getFolders();");
-            h.Append("if(folders.indexOf('Favorites bar')===-1)folders.push('Favorites bar');");
-            h.Append("var vis=getVisibleIndices();var out='';");
-            h.Append("if(vis.length===0){out='<tr><td colspan=\"5\" style=\"text-align:center;color:#aeb8c4;padding:30px\">No hay favoritos en esta seccion.</td></tr>';}");
-            h.Append("else{for(var vi=0;vi<vis.length;vi++){var idx=vis[vi];var b=bookmarks[idx];");
-            h.Append("var noUrl=!b.url||b.url.trim()==='';");
-            h.Append("var urlCell=noUrl?'<i style=\"color:#555e6e\">(Carpeta vacia)</i>':'<a href=\"#\" onclick=\"navigate('+idx+');return false\">'+escapeHtml(b.url)+'</a>';");
-            h.Append("var opts='';for(var fi=0;fi<folders.length;fi++){var f=folders[fi];opts+='<option value=\"'+escapeHtml(f)+'\" '+(b.folder===f?'selected':'')+'>'+escapeHtml(f)+'</option>';}");
-            h.Append("var chk=selected.has(idx);");
-            h.Append("out+='<tr data-idx=\"'+idx+'\" class=\"'+(chk?'selected':'')+'\">';");
-            h.Append("out+='<td><input type=\"checkbox\" '+(chk?'checked':'')+' onchange=\"toggleCheck('+idx+')\"></td>';");
-            h.Append("out+='<td style=\"font-weight:500\">'+escapeHtml(b.title||'Sin titulo')+'</td>';");
-            h.Append("out+='<td>'+urlCell+'</td>';");
-            h.Append("out+='<td><select onchange=\"moveBookmark('+idx+',this.value)\">'+opts+'</select></td>';");
-            h.Append("out+='<td><div class=\"actions\"><button class=\"btn-delete\" onclick=\"deleteSingle('+idx+')\">\\u2715</button></div></td>';");
-            h.Append("out+='</tr>';");
-            h.Append("}}");
-            h.Append("tbody.innerHTML=out;updateSelectionUI();}");
-
-            // navigate
-            h.Append("function navigate(idx){window.chrome.webview.postMessage('gxlight:navigate:'+bookmarks[idx].url);}");
-
-            // createNewFolder
-            h.Append("function createNewFolder(){var n=prompt('Nombre de la nueva carpeta:');if(n&&n.trim()!=='')");
-            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:create-folder:'+b64(n.trim()));}");
-
-            // deleteSingle (no confirmation for single delete – one click)
-            h.Append("function deleteSingle(idx){var b=bookmarks[idx];");
-            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:delete:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder));}");
-
-            // moveBookmark
-            h.Append("function moveBookmark(idx,nf){var b=bookmarks[idx];");
-            h.Append("window.chrome.webview.postMessage('gxlight:bookmarks:move:'+b64(b.title)+'|'+b64(b.url)+'|'+b64(b.folder)+'|'+b64(nf));}");
-
-            // Keyboard shortcuts
-            h.Append("document.getElementById('mainArea').addEventListener('keydown',function(e){");
-            h.Append("if(e.key==='Delete'||e.keyCode===46){e.preventDefault();deleteSelected();}");
-            h.Append("if(e.key==='a'&&(e.ctrlKey||e.metaKey)){e.preventDefault();toggleSelectAll();}");
-            h.Append("});");
-
-            // Init
-            h.Append("renderFolders();renderBookmarks();document.getElementById('mainArea').focus();");
-            h.Append("</script></body></html>");
-            return h.ToString();
-        }
-
-        private string PasswordsHtml()
-        {
-            StringBuilder body = new StringBuilder();
-            body.Append("<p>Preguntar antes de guardar passwords: <b>")
-                .Append(_passwordSavingEnabled ? "activado" : "desactivado")
-                .Append("</b>.</p>");
-            body.Append("<p>GX Light nunca guarda una credencial al escribirla. WebView2 muestra su aviso nativo despues de iniciar sesion y solo la conserva cuando eliges guardar.</p>");
-            body.Append("<p>Las credenciales nativas quedan cifradas por Windows dentro del perfil persistente. La boveda de importacion/exportacion tambien usa Windows DPAPI para el usuario actual.</p>");
-            body.Append("<p>Entradas importadas en la boveda: <b>").Append(_passwordVault.Count).Append("</b>. Usa Menu &gt; Passwords and autofill para importar o exportar CSV.</p>");
-
-            if (_passwordVault.Count == 0)
-            {
-                return body.ToString();
-            }
-
-            body.Append("<table><tr><th>Name</th><th>URL</th><th>Username</th><th>Imported</th></tr>");
-            for (int i = 0; i < _passwordVault.Count; i++)
-            {
-                PasswordVaultEntry entry = _passwordVault[i];
-                body.Append("<tr><td>").Append(EscapeHtml(entry.Name)).Append("</td><td>")
-                    .Append(EscapeHtml(entry.Url)).Append("</td><td>")
-                    .Append(EscapeHtml(entry.Username)).Append("</td><td>")
-                    .Append(entry.ImportedUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")).Append("</td></tr>");
-            }
-            body.Append("</table>");
-            return body.ToString();
-        }
-
-        private static string HtmlShell(string title, string body)
-        {
-            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
-                "main{padding:28px;max-width:1100px}h1{color:#72f5ff;margin:0 0 18px;font-size:30px}p{color:#c3ced8}" +
-                "table{border-collapse:collapse;width:100%;background:#171a22}th,td{border-bottom:1px solid #2e3440;padding:10px;text-align:left;vertical-align:top}" +
-                "th{color:#72f5ff;font-size:13px}a{color:#72f5ff}.pill{display:inline-block;background:#252833;border:1px solid #484d5c;padding:6px 9px;margin:3px}</style></head>" +
-                "<body><main><h1>" + EscapeHtml(title) + "</h1>" + body + "</main></body></html>";
+            return InternalPages.HtmlShell("Extensions", body.ToString());
         }
 
         private static string EscapeHtml(string value)
@@ -3759,60 +3536,6 @@ namespace GXLightBrowser
                 Rectangle rect = new Rectangle(0, 0, panel.Width - 1, panel.Height - 1);
                 e.Graphics.DrawRectangle(pen, rect);
             }
-        }
-
-        private static string HomeHtml()
-        {
-            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
-                ".wrap{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#111620,#0d0f14 55%,#13171d)}" +
-                ".box{width:min(860px,92vw)}h1{font-size:44px;margin:0 0 10px;color:#72f5ff;letter-spacing:0}" +
-                "p{color:#aeb8c4;margin:0 0 24px}.search{display:flex;gap:10px}.search input{flex:1;background:#20242d;border:1px solid #4a5360;color:#fff;padding:15px 16px;font-size:16px;outline:0}" +
-                ".search button,.link{background:#72f5ff;color:#061116;border:0;padding:0 18px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}" +
-                ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}.card{border:1px solid #2e3440;background:#171a22;padding:16px}.card b{display:block;margin-bottom:6px}" +
-                "@media(max-width:620px){h1{font-size:34px}.search{flex-direction:column}.search button{padding:13px}}</style></head>" +
-                "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegacion ligera con bloqueo nativo, extensiones locales y accesos rapidos.</p>" +
-                "<form class='search' action='https://duckduckgo.com/'><input name='q' autofocus placeholder='Buscar o escribir una URL'><button>Buscar</button></form>" +
-                "<div class='grid'><article class='card'><b>Chrome Web Store</b><a class='link' href='" + ChromeStoreUrl + "'>Abrir tienda</a></article>" +
-                "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extension.</span></article></div>" +
-                "</section></main></body></html>";
-        }
-
-        private string UpdateNoticeHtml()
-        {
-            StringBuilder items = new StringBuilder();
-            UpdateManifest manifest = _updateManifest ?? UpdateManifest.LocalFallback();
-            string[] highlights = manifest.Highlights ?? VersionInfo.Highlights();
-            for (int i = 0; i < highlights.Length; i++)
-            {
-                items.Append("<li>").Append(EscapeHtml(highlights[i])).Append("</li>");
-            }
-
-            string links = string.Empty;
-            if (!string.IsNullOrWhiteSpace(manifest.DownloadUrl))
-            {
-                links += "<a class='link' data-open-url='" + EscapeHtml(manifest.DownloadUrl) + "' href='" + EscapeHtml(manifest.DownloadUrl) + "'>Descargar actualizacion</a>";
-            }
-            if (!string.IsNullOrWhiteSpace(manifest.SourceUrl))
-            {
-                links += "<a class='link secondary' data-open-url='" + EscapeHtml(manifest.SourceUrl) + "' href='" + EscapeHtml(manifest.SourceUrl) + "'>Abrir GitHub</a>";
-            }
-
-            return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
-                "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
-                "main{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#121620,#0d0f14 60%,#17111e)}" +
-                "section{width:min(820px,92vw);border:1px solid #2e3440;background:#171a22;padding:28px}" +
-                "h1{margin:0 0 8px;color:#72f5ff;font-size:34px;letter-spacing:0}p{color:#c3ced8;line-height:1.5}" +
-                "ul{margin:18px 0 0;padding-left:22px}li{margin:10px 0;color:#eef7fa}.tag{display:inline-block;color:#061116;background:#72f5ff;padding:5px 9px;font-weight:700;margin-bottom:14px}" +
-                ".links{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}.link{background:#72f5ff;color:#061116;text-decoration:none;font-weight:700;padding:10px 13px}.secondary{background:#252833;color:#eef7fa;border:1px solid #484d5c}</style></head>" +
-                "<body><main><section><span class='tag'>Version " + EscapeHtml(manifest.Version) + "</span>" +
-                "<h1>" + EscapeHtml(manifest.ReleaseName) + "</h1>" +
-                "<p>Esta pestana se carga desde el manifiesto de actualizaciones en GitHub y aparece solo una vez por version publicada.</p>" +
-                "<p>Cliente instalado: <b>" + EscapeHtml(VersionInfo.CurrentVersion) + "</b>" +
-                (string.IsNullOrWhiteSpace(manifest.PublishedAt) ? string.Empty : " - Publicado: <b>" + EscapeHtml(manifest.PublishedAt) + "</b>") + "</p>" +
-                "<ul>" + items.ToString() + "</ul><div class='links'>" + links + "</div></section></main>" +
-                "<script>document.querySelectorAll('[data-open-url]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();window.chrome.webview.postMessage('gxlight:navigate:'+link.getAttribute('data-open-url'));});});</script>" +
-                "</body></html>";
         }
 
         private static void EnsureDefaultFilters()
@@ -3920,20 +3643,38 @@ namespace GXLightBrowser
         {
             try
             {
-                Uri faviconUri;
-                string candidate = core.FaviconUri;
-                if (!Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                Uri faviconUri = null;
+                string candidate = null;
+                try
                 {
-                    Uri pageUri;
-                    if (!Uri.TryCreate(core.Source, UriKind.Absolute, out pageUri) ||
-                        (pageUri.Scheme != Uri.UriSchemeHttp && pageUri.Scheme != Uri.UriSchemeHttps))
-                    {
-                        return;
-                    }
-                    faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
+                    candidate = core.FaviconUri;
+                }
+                catch
+                {
                 }
 
-                if (faviconUri.Scheme != Uri.UriSchemeHttp && faviconUri.Scheme != Uri.UriSchemeHttps)
+                if (string.IsNullOrEmpty(candidate) || !Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                {
+                    Uri pageUri = null;
+                    string source = null;
+                    try
+                    {
+                        source = core.Source;
+                    }
+                    catch
+                    {
+                    }
+
+                    if (!string.IsNullOrEmpty(source) && Uri.TryCreate(source, UriKind.Absolute, out pageUri))
+                    {
+                        if (pageUri.Scheme == Uri.UriSchemeHttp || pageUri.Scheme == Uri.UriSchemeHttps)
+                        {
+                            faviconUri = new Uri(pageUri.GetLeftPart(UriPartial.Authority) + "/favicon.ico");
+                        }
+                    }
+                }
+
+                if (faviconUri == null || (faviconUri.Scheme != Uri.UriSchemeHttp && faviconUri.Scheme != Uri.UriSchemeHttps))
                 {
                     return;
                 }
@@ -4307,89 +4048,6 @@ namespace GXLightBrowser
             }
 
             Logger.Info("Memory release complete.");
-        }
-
-        private string GetMemoryProcessesHtml()
-        {
-            if (_environment == null)
-            {
-                return "<p>No active WebView2 environment.</p>";
-            }
-
-            StringBuilder sb = new StringBuilder();
-            sb.Append("<h3>Active WebView2 Processes</h3>");
-            sb.Append("<table><tr><th>Process ID</th><th>Type</th><th>Memory (Working Set)</th></tr>");
-
-            try
-            {
-                var infos = _environment.GetProcessInfos();
-                if (infos != null)
-                {
-                    long total = 0;
-                    foreach (var info in infos)
-                    {
-                        string typeStr = info.Kind.ToString();
-                        string memStr = "Unknown";
-                        try
-                        {
-                            using (Process p = Process.GetProcessById((int)info.ProcessId))
-                            {
-                                long memMb = p.WorkingSet64 / (1024 * 1024);
-                                memStr = memMb + " MB";
-                                total += memMb;
-                            }
-                        }
-                        catch
-                        {
-                            memStr = "Access Denied / Exited";
-                        }
-                        sb.Append("<tr><td>" + info.ProcessId + "</td><td>" + typeStr + "</td><td>" + memStr + "</td></tr>");
-                    }
-                    sb.Append("<tr style='font-weight:bold;color:#72f5ff;'><td>Total Environment</td><td>-</td><td>" + total + " MB</td></tr>");
-                }
-            }
-            catch (Exception ex)
-            {
-                sb.Append("<tr><td colspan='3'>Error retrieving processes: " + EscapeHtml(ex.Message) + "</td></tr>");
-            }
-            sb.Append("</table>");
-            sb.Append("<div style='margin-top:20px;'><button onclick='location.href=\"gxlight://free-memory\"' style='background:#72f5ff;color:#061116;border:0;padding:10px 20px;font-weight:700;cursor:pointer;'>Liberar memoria ahora</button></div>");
-
-            return sb.ToString();
-        }
-
-        private sealed class HistoryEntry
-        {
-            public string Title { get; set; }
-            public string Url { get; set; }
-            public DateTime VisitedUtc { get; set; }
-        }
-
-        private sealed class DownloadEntry
-        {
-            public string FileName { get; set; }
-            public string Path { get; set; }
-            public string Uri { get; set; }
-            public string State { get; set; }
-            public DateTime StartedUtc { get; set; }
-        }
-
-        private sealed class BookmarkEntry
-        {
-            public string Title { get; set; }
-            public string Url { get; set; }
-            public string Folder { get; set; }
-            public DateTime CreatedUtc { get; set; }
-        }
-
-        private sealed class PasswordVaultEntry
-        {
-            public string Name { get; set; }
-            public string Url { get; set; }
-            public string Username { get; set; }
-            public string Password { get; set; }
-            public string Note { get; set; }
-            public DateTime ImportedUtc { get; set; }
         }
     }
 }

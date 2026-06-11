@@ -11,6 +11,7 @@ namespace GXLightBrowser
     internal sealed class UpdateManifest
     {
         public const string ManifestUrl = "https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json";
+        public const string DefaultChangelogUrl = "https://raw.githubusercontent.com/wiimri/GX-lite/main/CHANGELOG.md";
 
         [DataMember(Name = "version")]
         public string Version { get; set; }
@@ -30,8 +31,13 @@ namespace GXLightBrowser
         [DataMember(Name = "sourceUrl")]
         public string SourceUrl { get; set; }
 
+        [DataMember(Name = "changelogUrl")]
+        public string ChangelogUrl { get; set; }
+
         [DataMember(Name = "highlights")]
         public string[] Highlights { get; set; }
+
+        public string ChangelogMarkdown { get; set; }
 
         public static UpdateManifest LocalFallback()
         {
@@ -39,10 +45,12 @@ namespace GXLightBrowser
             {
                 Version = VersionInfo.CurrentVersion,
                 ReleaseName = VersionInfo.ReleaseName,
-                PublishedAt = "2026-06-08",
+                PublishedAt = "2026-06-11",
                 DownloadUrl = "https://github.com/wiimri/GX-lite/releases",
                 Sha256Url = string.Empty,
                 SourceUrl = "https://github.com/wiimri/GX-lite",
+                ChangelogUrl = DefaultChangelogUrl,
+                ChangelogMarkdown = string.Empty,
                 Highlights = VersionInfo.Highlights()
             };
         }
@@ -52,7 +60,13 @@ namespace GXLightBrowser
             try
             {
                 UpdateManifest manifest = await Task.Run(delegate { return DownloadLatest(); });
-                return IsUsable(manifest) ? manifest : LocalFallback();
+                if (!IsUsable(manifest))
+                {
+                    return LocalFallback();
+                }
+
+                manifest.ChangelogMarkdown = await Task.Run(delegate { return DownloadChangelog(manifest.ChangelogUrl); });
+                return manifest;
             }
             catch
             {
@@ -72,6 +86,28 @@ namespace GXLightBrowser
             {
                 DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(UpdateManifest));
                 return serializer.ReadObject(stream) as UpdateManifest;
+            }
+        }
+
+        private static string DownloadChangelog(string changelogUrl)
+        {
+            try
+            {
+                string url = string.IsNullOrWhiteSpace(changelogUrl) ? DefaultChangelogUrl : changelogUrl;
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                request.UserAgent = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                request.Timeout = 3500;
+                request.ReadWriteTimeout = 3500;
+                using (WebResponse response = request.GetResponse())
+                using (Stream stream = response.GetResponseStream())
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    return reader.ReadToEnd();
+                }
+            }
+            catch
+            {
+                return string.Empty;
             }
         }
 

@@ -21,7 +21,24 @@ function readYouTubeShieldsScript() {
   return match[1].replace(/\"\"/g, "\"");
 }
 
+function verifyInternalPageRoutes() {
+  const browserForm = fs.readFileSync(path.join(root, "src", "BrowserForm.cs"), "utf8");
+  const updateManifest = fs.readFileSync(path.join(root, "src", "UpdateManifest.cs"), "utf8");
+  const internalPages = fs.readFileSync(path.join(root, "src", "InternalPages.cs"), "utf8");
+  const requirements = [
+    [browserForm.includes('pageName == "updated"'), "gxlight://updated route is missing"],
+    [browserForm.includes('case "home":'), "internal home fallback route is missing"],
+    [browserForm.includes('case "updated":'), "internal update fallback route is missing"],
+    [updateManifest.includes("DefaultChangelogUrl"), "remote changelog loading is missing"],
+    [internalPages.includes("Bitacora de versiones"), "cumulative update notes UI is missing"]
+  ];
+  for (const [passes, message] of requirements) {
+    if (!passes) throw new Error(message);
+  }
+}
+
 async function main() {
+  verifyInternalPageRoutes();
   const browser = await chromium.launch({ channel: "msedge", headless: true });
   const cases = [
     { name: "desktop", width: 1280, height: 720 },
@@ -152,6 +169,10 @@ async function main() {
   await youtubePage.addInitScript(readYouTubeShieldsScript());
   await youtubePage.goto("https://www.youtube.com/mock-ad-page");
   await youtubePage.waitForTimeout(800);
+  await youtubePage.evaluate(() => {
+    document.querySelector(".html5-video-player").classList.remove("ad-showing");
+    window.__gxLightRunYouTubeShields();
+  });
   const youtubeReport = await youtubePage.evaluate(() => ({
     name: "youtube-shields",
     width: window.innerWidth,
@@ -160,7 +181,9 @@ async function main() {
       document.body.dataset.skip === "yes" ? null : "skip button was not clicked",
       document.querySelector("#player-ads") ? "player ad container was not removed" : null,
       document.querySelector("ytd-promoted-video-renderer") ? "promoted video renderer was not removed" : null,
-      document.querySelector(".ytp-ad-overlay-container") ? "ad overlay was not removed" : null
+      document.querySelector(".ytp-ad-overlay-container") ? "ad overlay was not removed" : null,
+      document.querySelector("video").muted ? "video remained muted after the ad" : null,
+      document.querySelector("video").playbackRate !== 1 ? "video playback rate was not restored" : null
     ].filter(Boolean)
   }));
   await youtubePage.close();

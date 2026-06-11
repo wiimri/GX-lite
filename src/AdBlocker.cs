@@ -248,6 +248,10 @@ namespace GXLightBrowser
             yield return "youtube.com/get_midroll";
             yield return "youtube.com/ptracking";
             yield return "youtube.com/youtubei/v1/log_event";
+            yield return "youtube.com/youtubei/v1/ads/";
+            yield return "youtube.com/youtubei/v1/attestation/";
+            yield return "youtube.com/api/stats/qoe";
+            yield return "youtube.com/api/stats/delayplay";
             yield return "/ads/";
             yield return "/adserver/";
             yield return "banner_ad";
@@ -290,13 +294,21 @@ namespace GXLightBrowser
                 if (normalized.StartsWith("||"))
                 {
                     normalized = normalized.Substring(2);
-                    normalized = TrimAtSeparator(normalized);
-                    normalized = normalized.TrimStart('.');
-                    if (normalized.Length == 0)
+                    string trimmed = TrimAtSeparator(normalized);
+                    if (normalized.Contains("/") && normalized.IndexOf('/') < normalized.Length - 1)
                     {
-                        return null;
+                        normalized = normalized.Replace("^", "/").Replace("*", string.Empty);
+                        return new FilterRule(normalized, false);
                     }
-                    return new FilterRule(normalized, true);
+                    else
+                    {
+                        normalized = trimmed.TrimStart('.');
+                        if (normalized.Length == 0)
+                        {
+                            return null;
+                        }
+                        return new FilterRule(normalized, true);
+                    }
                 }
 
                 if (normalized.StartsWith("|"))

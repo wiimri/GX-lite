@@ -1,5 +1,5 @@
 #define MyAppName "GX Light Browser"
-#define MyAppVersion "1.15"
+#define MyAppVersion "1.16"
 #define MyAppPublisher "wiimri"
 #define MyAppURL "https://github.com/wiimri/GX-lite"
 #define MyAppExeName "GXLightBrowser.exe"
@@ -18,7 +18,6 @@ PrivilegesRequired=admin
 UsePreviousAppDir=no
 CloseApplications=yes
 RestartApplications=no
-AppMutex=GXLightBrowser-Install-Mutex
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
@@ -43,15 +42,10 @@ Source: "..\prerequisites\ndp48-web.exe"; DestDir: "{tmp}"; Flags: deleteafterin
 
 [InstallDelete]
 Type: filesandordirs; Name: "{localappdata}\Programs\GXLightBrowser"
-Type: files; Name: "{userdesktop}\GX Light Browser.lnk"
-Type: files; Name: "{userprograms}\GX Light Browser.lnk"
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-
-[Tasks]
-Name: "desktopicon"; Description: "Crear un acceso directo en el escritorio"; GroupDescription: "Accesos directos:"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{tmp}\ndp48-web.exe"; Parameters: "/q /norestart"; StatusMsg: "Instalando .NET Framework 4.8..."; Check: not IsDotNet48Installed; Flags: waituntilterminated
@@ -93,4 +87,14 @@ begin
     Log('.NET Framework 4.8 no esta instalado; se instalara como requisito.');
   if not IsWebView2Installed then
     Log('WebView2 Runtime no esta instalado; se instalara como requisito.');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    { Remove stale per-user shortcuts only after the new installation completed. }
+    DeleteFile(ExpandConstant('{userdesktop}\{#MyAppName}.lnk'));
+    DeleteFile(ExpandConstant('{userprograms}\{#MyAppName}.lnk'));
+  end;
 end;
