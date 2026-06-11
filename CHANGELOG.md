@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.21`
+- Version publicada: `1.22`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -17,9 +17,19 @@ Desde la version `1.2`, el navegador lee el manifiesto remoto:
 https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 ```
 
-Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
+Ese archivo indica cual es la version publicada, el nombre de la release, los links and las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.22 - Búsqueda automática de actualizaciones al iniciar
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- **Búsqueda automática de actualizaciones**: Opción configurable en la sección de configuración ("Sistema y WebRTC") para buscar actualizaciones en segundo plano de forma silenciosa al arrancar el navegador. No genera diálogos intrusivos si la aplicación está actualizada.
+- **Notificación interactiva**: Si se encuentra una actualización disponible al iniciar, se muestra un mensaje informativo preguntando al usuario si desea proceder con la descarga e instalación.
+- **Preparación de versión 1.22**: Bump global de versión en todos los archivos de metadatos de compilación, instalador (Inno Setup) y manifiestos de actualización en línea.
 
 ## v1.21 - Modo Claro/Oscuro Inmersivo y Corrección de Atajos WebView2
 

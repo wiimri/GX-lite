@@ -904,6 +904,18 @@ namespace GXLightBrowser
             html.Append("<h2>Sistema y WebRTC</h2>");
             html.Append("<div class='card'>");
 
+            // Auto Check Updates Toggle
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Buscar actualizaciones automáticamente al iniciar</div>");
+            html.Append("    <div class='setting-desc'>Busca nuevas versiones al arrancar el navegador de forma silenciosa e informa solo si hay una disponible.</div>");
+            html.Append("  </div>");
+            html.Append("  <label class='switch'>");
+            html.Append("    <input type='checkbox' " + (settings.AutoCheckUpdates ? "checked" : "") + " onchange='toggleSetting(\"AutoCheckUpdates\", this.checked)'>");
+            html.Append("    <span class='slider'></span>");
+            html.Append("  </label>");
+            html.Append("</div>");
+
             // Reset Settings
             html.Append("<div class='setting-row'>");
             html.Append("  <div class='setting-info'>");

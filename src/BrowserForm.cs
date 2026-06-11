@@ -686,7 +686,8 @@ namespace GXLightBrowser
             _updateManifest = await UpdateManifest.LoadLatestAsync();
             Version installedVersion;
             Version remoteVersion;
-            if (Version.TryParse(VersionInfo.CurrentVersion, out installedVersion) &&
+            if (_appSettings.AutoCheckUpdates &&
+                Version.TryParse(VersionInfo.CurrentVersion, out installedVersion) &&
                 Version.TryParse(_updateManifest.Version, out remoteVersion) &&
                 remoteVersion > installedVersion)
             {
@@ -1224,6 +1225,10 @@ namespace GXLightBrowser
                     else if (key == "AskSavePathBeforeDownload")
                     {
                         _appSettings.AskSavePathBeforeDownload = val;
+                    }
+                    else if (key == "AutoCheckUpdates")
+                    {
+                        _appSettings.AutoCheckUpdates = val;
                     }
 
                     _appSettings.Save();
@@ -1804,7 +1809,18 @@ namespace GXLightBrowser
                 return;
             }
 
-            await PrepareUpdateAsync(latest, showCurrentMessage);
+            if (!showCurrentMessage)
+            {
+                DialogResult res = MessageBox.Show(this,
+                    "Nueva actualización disponible: v" + latest.Version + "\n\n¿Deseas descargarla e instalarla ahora?",
+                    "Actualización disponible", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (res != DialogResult.Yes)
+                {
+                    return;
+                }
+            }
+
+            await PrepareUpdateAsync(latest, true);
         }
 
         private async Task PrepareUpdateAsync(UpdateManifest manifest, bool userRequested)

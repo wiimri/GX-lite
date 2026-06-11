@@ -37,6 +37,7 @@ namespace GXLightBrowser
         public bool AskSavePathBeforeDownload { get; set; }
         public string DefaultSearchEngine { get; set; }
         public string ThemeMode { get; set; }
+        public bool AutoCheckUpdates { get; set; }
 
         public AppSettings()
         {
@@ -68,6 +69,7 @@ namespace GXLightBrowser
             AskSavePathBeforeDownload = false;
             DefaultSearchEngine = "DuckDuckGo";
             ThemeMode = "Dark";
+            AutoCheckUpdates = true;
         }
 
         public static AppSettings Load()
@@ -139,6 +141,8 @@ namespace GXLightBrowser
                         settings.DefaultSearchEngine = value;
                     else if (string.Equals(key, "ThemeMode", StringComparison.OrdinalIgnoreCase))
                         settings.ThemeMode = value;
+                    else if (string.Equals(key, "AutoCheckUpdates", StringComparison.OrdinalIgnoreCase))
+                        settings.AutoCheckUpdates = bool.Parse(value);
                 }
             }
             catch (Exception ex)
@@ -180,6 +184,7 @@ namespace GXLightBrowser
                 builder.Append("AskSavePathBeforeDownload=").Append(AskSavePathBeforeDownload).AppendLine();
                 builder.Append("DefaultSearchEngine=").Append(DefaultSearchEngine ?? "DuckDuckGo").AppendLine();
                 builder.Append("ThemeMode=").Append(ThemeMode ?? "Dark").AppendLine();
+                builder.Append("AutoCheckUpdates=").Append(AutoCheckUpdates).AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }
