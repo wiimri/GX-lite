@@ -35,6 +35,7 @@ namespace GXLightBrowser
         public bool ShowBookmarksBar { get; set; }
         public string CustomDownloadsFolder { get; set; }
         public bool AskSavePathBeforeDownload { get; set; }
+        public string DefaultSearchEngine { get; set; }
 
         public AppSettings()
         {
@@ -64,6 +65,7 @@ namespace GXLightBrowser
             ShowBookmarksBar = true;
             CustomDownloadsFolder = string.Empty;
             AskSavePathBeforeDownload = false;
+            DefaultSearchEngine = "DuckDuckGo";
         }
 
         public static AppSettings Load()
@@ -131,6 +133,8 @@ namespace GXLightBrowser
                         settings.CustomDownloadsFolder = value;
                     else if (string.Equals(key, "AskSavePathBeforeDownload", StringComparison.OrdinalIgnoreCase))
                         settings.AskSavePathBeforeDownload = bool.Parse(value);
+                    else if (string.Equals(key, "DefaultSearchEngine", StringComparison.OrdinalIgnoreCase))
+                        settings.DefaultSearchEngine = value;
                 }
             }
             catch (Exception ex)
@@ -170,6 +174,7 @@ namespace GXLightBrowser
                 builder.Append("ShowBookmarksBar=").Append(ShowBookmarksBar).AppendLine();
                 builder.Append("CustomDownloadsFolder=").Append(CustomDownloadsFolder ?? string.Empty).AppendLine();
                 builder.Append("AskSavePathBeforeDownload=").Append(AskSavePathBeforeDownload).AppendLine();
+                builder.Append("DefaultSearchEngine=").Append(DefaultSearchEngine ?? "DuckDuckGo").AppendLine();
 
                 File.WriteAllText(AppPaths.Settings, builder.ToString(), Encoding.UTF8);
             }

@@ -44,8 +44,36 @@ namespace GXLightBrowser
             return value.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
         }
 
-        public static string HomeHtml()
+        public static string HomeHtml(AppSettings settings)
         {
+            if (settings == null)
+            {
+                settings = new AppSettings();
+            }
+
+            string searchAction = "https://duckduckgo.com/";
+            string searchParamName = "q";
+            string searchEngine = settings.DefaultSearchEngine ?? "DuckDuckGo";
+            switch (searchEngine.ToLowerInvariant())
+            {
+                case "google":
+                    searchAction = "https://www.google.com/search";
+                    searchParamName = "q";
+                    break;
+                case "bing":
+                    searchAction = "https://www.bing.com/search";
+                    searchParamName = "q";
+                    break;
+                case "yahoo":
+                    searchAction = "https://search.yahoo.com/search";
+                    searchParamName = "p";
+                    break;
+                default:
+                    searchAction = "https://duckduckgo.com/";
+                    searchParamName = "q";
+                    break;
+            }
+
             return "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>" +
                 "<style>body{margin:0;background:#0d0f14;color:#eef7fa;font-family:Segoe UI,Arial,sans-serif}" +
                 ".wrap{min-height:100vh;display:grid;place-items:center;padding:28px;background:linear-gradient(135deg,#111620,#0d0f14 55%,#13171d)}" +
@@ -54,10 +82,10 @@ namespace GXLightBrowser
                 ".search button,.link{background:#72f5ff;color:#061116;border:0;padding:0 18px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}" +
                 ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}.card{border:1px solid #2e3440;background:#171a22;padding:16px}.card b{display:block;margin-bottom:6px}" +
                 "@media(max-width:620px){h1{font-size:34px}.search{flex-direction:column}.search button{padding:13px}}</style></head>" +
-                "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegacion ligera con bloqueo nativo, extensiones locales y accesos rapidos.</p>" +
-                "<form class='search' action='https://duckduckgo.com/'><input name='q' autofocus placeholder='Buscar o escribir una URL'><button>Buscar</button></form>" +
+                "<body><main class='wrap'><section class='box'><h1>GX Light</h1><p>Navegación ligera con bloqueo nativo, extensiones locales y accesos rápidos.</p>" +
+                "<form class='search' action='" + searchAction + "' method='get'><input name='" + searchParamName + "' autofocus placeholder='Buscar o escribir una URL en " + searchEngine + "'><button>Buscar</button></form>" +
                 "<div class='grid'><article class='card'><b>Chrome Web Store</b><a class='link' href='" + ChromeStoreUrl + "'>Abrir tienda</a></article>" +
-                "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extension.</span></article></div>" +
+                "<article class='card'><b>Shields</b><span>Bloqueador activo desde el navegador, no como extensión.</span></article></div>" +
                 "</section></main></body></html>";
         }
 
@@ -640,7 +668,27 @@ namespace GXLightBrowser
             html.Append("  </label>");
             html.Append("</div>");
 
-            html.Append("</div></section>");
+            html.Append("</div>");
+
+            // Search engine card
+            html.Append("<div class='card'>");
+            html.Append("<div class='setting-row'>");
+            html.Append("  <div class='setting-info'>");
+            html.Append("    <div class='setting-title'>Buscador predeterminado</div>");
+            html.Append("    <div class='setting-desc'>Selecciona el motor de búsqueda que se utilizará al escribir en la barra de direcciones o en la página de inicio.</div>");
+            html.Append("  </div>");
+            html.Append("  <select onchange='selectSetting(\"DefaultSearchEngine\", this.value)'>");
+            string[] engines = { "Google", "DuckDuckGo", "Bing", "Yahoo" };
+            for (int i = 0; i < engines.Length; i++)
+            {
+                bool sel = string.Equals(settings.DefaultSearchEngine, engines[i], StringComparison.OrdinalIgnoreCase);
+                html.Append("    <option value='" + engines[i] + "' " + (sel ? "selected" : "") + ">" + engines[i] + "</option>");
+            }
+            html.Append("  </select>");
+            html.Append("</div>");
+            html.Append("</div>");
+
+            html.Append("</section>");
 
             // Section 2: Limitadores GX
             html.Append("<section id='limitadores'>");

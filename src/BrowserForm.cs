@@ -258,8 +258,8 @@ namespace GXLightBrowser
                 }
             };
 
-            _newTab.Click += async delegate { await CreateTabAsync(HomeUrl); };
-            _tabStripNewTab.Click += async delegate { await CreateTabAsync(HomeUrl); };
+            _newTab.Click += async delegate { await CreateTabAsync("about:blank"); };
+            _tabStripNewTab.Click += async delegate { await CreateTabAsync("about:blank"); };
             _shield.Click += delegate
             {
                 _adBlockEnabled = !_adBlockEnabled;
@@ -406,16 +406,49 @@ namespace GXLightBrowser
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetParent(IntPtr hWnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern short GetKeyState(int nVirtKey);
+
+        private bool IsActiveWindow()
+        {
+            IntPtr foreground = GetForegroundWindow();
+            if (foreground == IntPtr.Zero) return false;
+            if (foreground == this.Handle) return true;
+
+            IntPtr parent = foreground;
+            while (parent != IntPtr.Zero)
+            {
+                if (parent == this.Handle) return true;
+                parent = GetParent(parent);
+            }
+            return false;
+        }
+
+        private static Keys GetModifierKeys()
+        {
+            Keys modifiers = Keys.None;
+            if (GetKeyState(0x11) < 0) modifiers |= Keys.Control;
+            if (GetKeyState(0x10) < 0) modifiers |= Keys.Shift;
+            if (GetKeyState(0x12) < 0) modifiers |= Keys.Alt;
+            return modifiers;
+        }
+
         public bool PreFilterMessage(ref Message message)
         {
             const int WmKeyDown = 0x0100;
             const int WmSysKeyDown = 0x0104;
-            if ((message.Msg != WmKeyDown && message.Msg != WmSysKeyDown) || !ContainsFocus)
+            if ((message.Msg != WmKeyDown && message.Msg != WmSysKeyDown) || !IsActiveWindow())
             {
                 return false;
             }
 
-            Keys keyData = (Keys)((int)message.WParam) | Control.ModifierKeys;
+            Keys keyData = (Keys)((int)message.WParam) | GetModifierKeys();
             if (!IsBrowserShortcut(keyData))
             {
                 return false;
@@ -444,7 +477,7 @@ namespace GXLightBrowser
             }
             if (keyData == (Keys.Control | Keys.T))
             {
-                Task ignored = CreateTabAsync(HomeUrl);
+                Task ignored = CreateTabAsync("about:blank");
                 return true;
             }
             if (keyData == (Keys.Alt | Keys.T))
@@ -701,6 +734,17 @@ namespace GXLightBrowser
             ApplyTabResourcePolicy();
             EnforceLowResourceLimit();
             SaveSession();
+
+            if (url == "about:blank")
+            {
+                _address.Text = string.Empty;
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    _address.Focus();
+                    _address.SelectAll();
+                });
+            }
+
             return tab;
         }
 
@@ -1483,7 +1527,7 @@ namespace GXLightBrowser
                 string pageName = normalized.Substring("gxlight://".Length).Trim().ToLowerInvariant();
                 if (pageName == "home")
                 {
-                    web.NavigateToString(InternalPages.HomeHtml());
+                    web.NavigateToString(InternalPages.HomeHtml(_appSettings));
                     _address.Text = HomeUrl;
                 }
                 else if (pageName == "updated" || pageName == "novedades")
@@ -1589,7 +1633,7 @@ namespace GXLightBrowser
         {
             ContextMenuStrip menu = CreateContextMenu();
 
-            menu.Items.Add(CreateMenuItem("Nueva pestaña", "Ctrl+T", async delegate { await CreateTabAsync(HomeUrl); }));
+            menu.Items.Add(CreateMenuItem("Nueva pestaña", "Ctrl+T", async delegate { await CreateTabAsync("about:blank"); }));
             menu.Items.Add(CreateMenuItem("Nueva pestaña en isla", "Alt+T", async delegate { await CreateNewIslandTabAsync(); }));
             menu.Items.Add(CreateMenuItem("Nueva ventana", "Ctrl+N", delegate { StartNewWindow(); }));
             menu.Items.Add(CreateMenuItem("Nueva ventana privada", "Ctrl+Shift+N", delegate { MessageBox.Show(this, "El modo privado aún no está implementado.", "GX Light"); }));
@@ -3507,14 +3551,36 @@ namespace GXLightBrowser
             BrowserTab tab = ActiveTab();
             if (tab != null && tab.IsSuspended)
             {
-                _address.Text = string.IsNullOrWhiteSpace(tab.SuspendedUrl) ? HomeUrl : tab.SuspendedUrl;
+                if (tab.SuspendedUrl == "about:blank")
+                {
+                    _address.Text = string.Empty;
+                }
+                else
+                {
+                    _address.Text = string.IsNullOrWhiteSpace(tab.SuspendedUrl) ? HomeUrl : tab.SuspendedUrl;
+                }
                 return;
             }
 
             WebView2 web = ActiveWebView();
             if (web != null && web.Source != null)
             {
-                _address.Text = web.Source.ToString() == "about:blank" ? HomeUrl : web.Source.ToString();
+                string src = web.Source.ToString();
+                if (src == "about:blank")
+                {
+                    if (tab != null && tab.SuspendedUrl == "about:blank")
+                    {
+                        _address.Text = string.Empty;
+                    }
+                    else
+                    {
+                        _address.Text = HomeUrl;
+                    }
+                }
+                else
+                {
+                    _address.Text = src;
+                }
             }
         }
 
@@ -3724,7 +3790,7 @@ namespace GXLightBrowser
             return values.ToArray();
         }
 
-        private static string NormalizeInput(string input)
+        private string NormalizeInput(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
             {
@@ -3752,7 +3818,24 @@ namespace GXLightBrowser
                 return "https://" + value;
             }
 
-            return "https://duckduckgo.com/?q=" + Uri.EscapeDataString(value);
+            string searchEngine = (_appSettings != null && _appSettings.DefaultSearchEngine != null) ? _appSettings.DefaultSearchEngine : "DuckDuckGo";
+            string searchUrl;
+            switch (searchEngine.ToLowerInvariant())
+            {
+                case "google":
+                    searchUrl = "https://www.google.com/search?q=";
+                    break;
+                case "bing":
+                    searchUrl = "https://www.bing.com/search?q=";
+                    break;
+                case "yahoo":
+                    searchUrl = "https://search.yahoo.com/search?p=";
+                    break;
+                default:
+                    searchUrl = "https://duckduckgo.com/?q=";
+                    break;
+            }
+            return searchUrl + Uri.EscapeDataString(value);
         }
 
         private static bool IsYouTubeHost(string host)
@@ -4014,7 +4097,7 @@ namespace GXLightBrowser
             switch (pageName)
             {
                 case "home":
-                    return InternalPages.HomeHtml();
+                    return InternalPages.HomeHtml(_appSettings);
                 case "updated":
                 case "novedades":
                     return InternalPages.UpdateNoticeHtml(_updateManifest);

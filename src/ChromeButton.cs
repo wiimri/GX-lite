@@ -17,13 +17,18 @@ namespace GXLightBrowser
             ForeColor = Theme.Text;
             Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
             Cursor = Cursors.Hand;
-            Accent = Theme.Accent;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
         }
 
         public bool IsSelected { get; set; }
         public bool IsMultiSelected { get; set; }
-        public Color Accent { get; set; }
+
+        private Color? _accent;
+        public Color Accent
+        {
+            get { return _accent ?? Theme.Accent; }
+            set { _accent = value; }
+        }
         public bool ShowCloseGlyph { get; set; }
         public bool ShowIslandStripe { get; set; }
         public Color IslandColor { get; set; }
