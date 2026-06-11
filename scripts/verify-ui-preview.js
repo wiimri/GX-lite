@@ -30,7 +30,12 @@ function verifyInternalPageRoutes() {
     [browserForm.includes('case "home":'), "internal home fallback route is missing"],
     [browserForm.includes('case "updated":'), "internal update fallback route is missing"],
     [updateManifest.includes("DefaultChangelogUrl"), "remote changelog loading is missing"],
-    [internalPages.includes("Bitacora de versiones"), "cumulative update notes UI is missing"]
+    [internalPages.includes("Bitacora de versiones"), "cumulative update notes UI is missing"],
+    [browserForm.includes("ContainsFullScreenElementChanged"), "WebView2 fullscreen handling is missing"],
+    [browserForm.includes("Collapse this tab"), "individual compact tab action is missing"],
+    [browserForm.includes("SetSelectedTabsCompact"), "selected compact tab action is missing"],
+    [!browserForm.includes("video.currentTime = video.duration"), "YouTube Shields still accelerates ads"],
+    [!browserForm.includes("video.playbackRate = 16"), "YouTube Shields still changes playback speed"]
   ];
   for (const [passes, message] of requirements) {
     if (!passes) throw new Error(message);
@@ -188,6 +193,35 @@ async function main() {
   }));
   await youtubePage.close();
   results.push(youtubeReport);
+
+  const youtubeFocusPage = await browser.newPage();
+  await youtubeFocusPage.route("https://www.youtube.com/mock-comments", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><html><body>
+        <div class="html5-video-player"></div>
+        <button class="ytp-ad-skip-button" style="display:none">Skip</button>
+        <div id="comment" contenteditable="true"></div>
+      </body></html>`
+    });
+  });
+  await youtubeFocusPage.addInitScript(readYouTubeShieldsScript());
+  await youtubeFocusPage.goto("https://www.youtube.com/mock-comments");
+  await youtubeFocusPage.locator("#comment").focus();
+  await youtubeFocusPage.keyboard.type("comentario de prueba");
+  await youtubeFocusPage.waitForTimeout(1300);
+  const focusReport = await youtubeFocusPage.evaluate(() => ({
+    name: "youtube-comment-focus",
+    width: window.innerWidth,
+    height: window.innerHeight,
+    failures: [
+      document.activeElement && document.activeElement.id === "comment" ? null : "comment editor lost focus",
+      document.querySelector("#comment").textContent === "comentario de prueba" ? null : "comment text was interrupted"
+    ].filter(Boolean)
+  }));
+  await youtubeFocusPage.close();
+  results.push(focusReport);
 
   const nonYouTubePage = await browser.newPage();
   const nonYouTubeErrors = [];

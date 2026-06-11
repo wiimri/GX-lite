@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.16`
+- Version publicada: `1.17`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,23 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.17 - Comentarios, bloqueo real, fullscreen y colapso individual
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- YouTube Shields deja de alterar `currentTime`, velocidad y mute del video para intentar saltar anuncios.
+- El detector solo pulsa botones de omitir visibles mientras el reproductor confirma que hay un anuncio.
+- El ciclo de Shields ya no pulsa controles ocultos repetidamente, evitando que el editor de comentarios pierda foco.
+- Las reglas publicitarias se evalúan antes de las excepciones de compatibilidad multimedia.
+- La compatibilidad de YouTube deja de permitir indiscriminadamente todas las solicitudes XHR y Fetch.
+- Se bloquean endpoints publicitarios conocidos tanto de `youtube.com` como de `youtubei.googleapis.com`.
+- WebView2 conecta `ContainsFullScreenElementChanged` para ocultar la interfaz y ocupar la pantalla real.
+- Cada pestana conserva un estado compacto individual.
+- El menu contextual separa colapsar esta pestana, colapsar seleccionadas y modo compacto global.
+- El estado compacto individual se conserva al restaurar la sesion.
 
 ## v1.16 - Motor interno, privacidad y actualizacion reparada
 

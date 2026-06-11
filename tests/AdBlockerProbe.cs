@@ -37,6 +37,18 @@ internal static class AdBlockerProbe
                 return 1;
             }
 
+            if (!blocker.ShouldBlock(new Uri("https://youtubei.googleapis.com/youtubei/v1/ads/request"), document))
+            {
+                Console.Error.WriteLine("Expected the YouTube API ads endpoint to be blocked.");
+                return 1;
+            }
+
+            if (blocker.ShouldBlock(new Uri("https://youtubei.googleapis.com/youtubei/v1/player"), document))
+            {
+                Console.Error.WriteLine("Expected the required YouTube player endpoint to remain allowed.");
+                return 1;
+            }
+
             Console.WriteLine("Ad blocker probe passed.");
             return 0;
         }

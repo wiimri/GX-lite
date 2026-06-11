@@ -55,6 +55,11 @@ namespace GXLightBrowser
             string host = requestUri.Host.ToLowerInvariant();
             string documentHost = documentUri == null ? string.Empty : documentUri.Host.ToLowerInvariant();
 
+            if (IsCriticalYouTubeBlock(request, host))
+            {
+                return true;
+            }
+
             if (IsSiteCompatibilityAllow(request, host, documentHost))
             {
                 return false;
@@ -105,7 +110,9 @@ namespace GXLightBrowser
                     return true;
                 }
 
-                if (IsHostOrSubdomain(host, "youtubei.googleapis.com"))
+                if (IsHostOrSubdomain(host, "youtubei.googleapis.com") &&
+                    (request.IndexOf("/youtubei/v1/player", StringComparison.Ordinal) >= 0 ||
+                     request.IndexOf("/youtubei/v1/next", StringComparison.Ordinal) >= 0))
                 {
                     return true;
                 }
@@ -127,6 +134,24 @@ namespace GXLightBrowser
             }
 
             return false;
+        }
+
+        private static bool IsCriticalYouTubeBlock(string request, string host)
+        {
+            if (!IsHostOrSubdomain(host, "youtube.com") &&
+                !IsHostOrSubdomain(host, "youtubei.googleapis.com"))
+            {
+                return false;
+            }
+
+            return request.IndexOf("/youtubei/v1/ads/", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/youtubei/v1/attestation/", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/api/stats/ads", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/api/stats/qoe", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/api/stats/delayplay", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/pagead/", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/get_midroll", StringComparison.Ordinal) >= 0 ||
+                request.IndexOf("/ptracking", StringComparison.Ordinal) >= 0;
         }
 
         private static bool IsHostOrSubdomain(string host, string domain)
@@ -252,6 +277,8 @@ namespace GXLightBrowser
             yield return "youtube.com/youtubei/v1/attestation/";
             yield return "youtube.com/api/stats/qoe";
             yield return "youtube.com/api/stats/delayplay";
+            yield return "youtubei.googleapis.com/youtubei/v1/ads/";
+            yield return "youtubei.googleapis.com/youtubei/v1/attestation/";
             yield return "/ads/";
             yield return "/adserver/";
             yield return "banner_ad";

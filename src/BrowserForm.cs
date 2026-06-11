@@ -63,6 +63,11 @@ namespace GXLightBrowser
         private bool _restoringSession;
         private bool _cleaningUp;
         private int _lastClickedTabIndex = -1;
+        private bool _fullScreenActive;
+        private FormBorderStyle _previousBorderStyle;
+        private FormWindowState _previousWindowState;
+        private Rectangle _previousBounds;
+        private bool _previousTopMost;
 
         public BrowserForm()
         {
@@ -517,7 +522,8 @@ namespace GXLightBrowser
                     var tabData = session.Tabs[i];
                     if (i != session.ActiveIndex)
                     {
-                        CreateSuspendedTab(tabData.Url, tabData.Title, tabData.IslandId);
+                        BrowserTab restored = CreateSuspendedTab(tabData.Url, tabData.Title, tabData.IslandId);
+                        restored.IsCompact = tabData.IsCompact;
                     }
                     else
                     {
@@ -526,6 +532,7 @@ namespace GXLightBrowser
                         if (lastTab != null)
                         {
                             lastTab.IslandId = tabData.IslandId;
+                            lastTab.IsCompact = tabData.IsCompact;
                         }
                     }
                 }
@@ -625,6 +632,85 @@ namespace GXLightBrowser
             web.CoreWebView2.DocumentTitleChanged += DocumentTitleChangedHandler;
             web.CoreWebView2.FaviconChanged += FaviconChangedHandler;
             web.CoreWebView2.ProcessFailed += Web_ProcessFailed;
+            web.CoreWebView2.ContainsFullScreenElementChanged += ContainsFullScreenElementChanged;
+        }
+
+        private void ContainsFullScreenElementChanged(object sender, object e)
+        {
+            CoreWebView2 core = sender as CoreWebView2;
+            WebView2 web = WebViewForCore(core);
+            if (core == null || web == null)
+            {
+                return;
+            }
+
+            if (core.ContainsFullScreenElement)
+            {
+                if (web == ActiveWebView())
+                {
+                    SetFullScreenMode(true);
+                }
+            }
+            else if (_fullScreenActive)
+            {
+                SetFullScreenMode(false);
+            }
+        }
+
+        private void SetFullScreenMode(bool enabled)
+        {
+            TableLayoutPanel root = _tabs.Parent as TableLayoutPanel;
+            if (root == null || enabled == _fullScreenActive)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                _previousBorderStyle = FormBorderStyle;
+                _previousWindowState = WindowState;
+                _previousBounds = Bounds;
+                _previousTopMost = TopMost;
+                _fullScreenActive = true;
+
+                for (int i = 0; i < root.Controls.Count; i++)
+                {
+                    Control control = root.Controls[i];
+                    control.Visible = control == _tabs;
+                }
+                root.ColumnStyles[0].Width = 0;
+                root.RowStyles[0].Height = 0;
+                root.RowStyles[2].Height = 0;
+                FormBorderStyle = FormBorderStyle.None;
+                WindowState = FormWindowState.Normal;
+                Bounds = Screen.FromControl(this).Bounds;
+                TopMost = true;
+                WebView2 activeWeb = ActiveWebView();
+                if (activeWeb != null)
+                {
+                    activeWeb.Focus();
+                }
+                return;
+            }
+
+            _fullScreenActive = false;
+            TopMost = _previousTopMost;
+            FormBorderStyle = _previousBorderStyle;
+            Bounds = _previousBounds;
+            WindowState = _previousWindowState;
+            root.ColumnStyles[0].Width = 62;
+            root.RowStyles[0].Height = 124;
+            root.RowStyles[2].Height = 28;
+            for (int i = 0; i < root.Controls.Count; i++)
+            {
+                root.Controls[i].Visible = true;
+            }
+            ApplyResponsiveMode();
+            WebView2 active = ActiveWebView();
+            if (active != null)
+            {
+                active.Focus();
+            }
         }
 
         private async void NewWindowRequested(object sender, CoreWebView2NewWindowRequestedEventArgs e)
@@ -950,15 +1036,15 @@ namespace GXLightBrowser
                 return;
             }
 
-            if (IsMediaCompatibilityRequest(e.ResourceContext, requestUri, documentUri))
-            {
-                return;
-            }
-
             bool shouldBlock = _adBlocker.ShouldBlock(requestUri, documentUri);
             if (!shouldBlock && _privacyFirewallEnabled)
             {
                 shouldBlock = _privacyFirewall.ShouldBlock(requestUri, documentUri);
+            }
+
+            if (!shouldBlock && IsMediaCompatibilityRequest(e.ResourceContext, requestUri, documentUri))
+            {
+                return;
             }
 
             if (!shouldBlock)
@@ -1001,9 +1087,7 @@ namespace GXLightBrowser
             string requestHost = requestUri.Host.ToLowerInvariant();
             if (IsYouTubeHost(documentHost))
             {
-                return requestHost.EndsWith("googlevideo.com", StringComparison.Ordinal) ||
-                    requestHost.EndsWith("youtube.com", StringComparison.Ordinal) ||
-                    requestHost.EndsWith("youtubei.googleapis.com", StringComparison.Ordinal);
+                return requestHost.EndsWith("googlevideo.com", StringComparison.Ordinal);
             }
 
             if (IsHostOrSubdomain(documentHost, "crunchyroll.com"))
@@ -2238,11 +2322,11 @@ namespace GXLightBrowser
                 }
                 ChromeButton tab = new ChromeButton();
                 tab.Text = Trim(page.Text, Width < 900 ? 16 : 24);
-                tab.Width = width;
+                tab.Width = browserTab != null && browserTab.IsCompact ? 38 : width;
                 tab.Height = 28;
                 tab.Margin = new Padding(0, 1, 6, 3);
                 tab.IsSelected = page == _tabs.SelectedTab;
-                tab.IconOnly = _appSettings.CompactIconTabs || width <= 58;
+                tab.IconOnly = _appSettings.CompactIconTabs || (browserTab != null && browserTab.IsCompact) || tab.Width <= 58;
                 tab.ShowCloseGlyph = !tab.IconOnly && width >= 86;
                 tab.IconImage = _appSettings.ShowPageIcons && browserTab != null ? browserTab.Favicon : null;
                 tab.ShowIconPlaceholder = _appSettings.ShowPageIcons && browserTab != null && browserTab.Favicon == null;
@@ -2462,16 +2546,29 @@ namespace GXLightBrowser
             AddTabWidthMenuItem(tabSize, "Medium", 140);
             AddTabWidthMenuItem(tabSize, "Large", 190);
             menu.Items.Add(tabSize);
-            ToolStripMenuItem compact = new ToolStripMenuItem("Compact icon tab");
-            compact.Checked = _appSettings.CompactIconTabs;
+            ToolStripMenuItem compact = new ToolStripMenuItem(tab.IsCompact ? "Expand this tab" : "Collapse this tab");
+            compact.Checked = tab.IsCompact;
             compact.Click += delegate
+            {
+                tab.IsCompact = !tab.IsCompact;
+                if (tab.IsCompact) _appSettings.ShowPageIcons = true;
+                _appSettings.Save();
+                SaveSession();
+                RebuildTabStrip();
+            };
+            menu.Items.Add(compact);
+            menu.Items.Add("Collapse selected tabs", null, delegate { SetSelectedTabsCompact(tab, true); });
+            menu.Items.Add("Expand selected tabs", null, delegate { SetSelectedTabsCompact(tab, false); });
+            ToolStripMenuItem compactAll = new ToolStripMenuItem("Compact all tabs");
+            compactAll.Checked = _appSettings.CompactIconTabs;
+            compactAll.Click += delegate
             {
                 _appSettings.CompactIconTabs = !_appSettings.CompactIconTabs;
                 if (_appSettings.CompactIconTabs) _appSettings.ShowPageIcons = true;
                 _appSettings.Save();
                 RebuildTabStrip();
             };
-            menu.Items.Add(compact);
+            menu.Items.Add(compactAll);
             if (tab.IslandId > 0)
             {
                 menu.Items.Add("Add selected tabs to this island", null, delegate { AddSelectedTabsToIsland(tab.IslandId); });
@@ -2623,6 +2720,22 @@ namespace GXLightBrowser
                     SuspendTab(tab);
                 }
             }
+        }
+
+        private void SetSelectedTabsCompact(BrowserTab fallback, bool compact)
+        {
+            List<BrowserTab> selected = SelectedTabsOr(fallback);
+            for (int i = 0; i < selected.Count; i++)
+            {
+                selected[i].IsCompact = compact;
+            }
+            if (compact)
+            {
+                _appSettings.ShowPageIcons = true;
+                _appSettings.Save();
+            }
+            SaveSession();
+            RebuildTabStrip();
         }
 
         private void CopySelectedTabAddresses(BrowserTab fallback)
@@ -2982,7 +3095,18 @@ namespace GXLightBrowser
                 }
             }
 
-            int available = Math.Max(80, _tabStrip.Width - islandWidth - 46);
+            int compactTabs = 0;
+            for (int i = 0; i < _tabs.TabPages.Count; i++)
+            {
+                BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                if (tab != null && tab.IsCompact &&
+                    (tab.IslandId <= 0 || !_collapsedIslands.Contains(tab.IslandId)))
+                {
+                    compactTabs++;
+                }
+            }
+            visibleTabs = Math.Max(0, visibleTabs - compactTabs);
+            int available = Math.Max(80, _tabStrip.Width - islandWidth - 46 - compactTabs * 44);
             int automaticWidth = (available / Math.Max(1, visibleTabs)) - 6;
             automaticWidth = Math.Max(38, Math.Min(190, automaticWidth));
             return _appSettings.TabWidth >= 80 ? Math.Min(_appSettings.TabWidth, automaticWidth) : automaticWidth;
@@ -3365,9 +3489,13 @@ namespace GXLightBrowser
   }
 
   function clickSkips() {
+    const player = document.querySelector('.html5-video-player');
+    const inAd = player && (player.classList.contains('ad-showing') || player.classList.contains('ad-interrupting'));
+    if (!inAd) return;
     for (const selector of skipSelectors) {
       document.querySelectorAll(selector).forEach((node) => {
-        if (node && typeof node.click === 'function') {
+        const visible = node && node.getClientRects && node.getClientRects().length > 0;
+        if (visible && !node.disabled && typeof node.click === 'function') {
           node.click();
         }
       });
@@ -3377,63 +3505,27 @@ namespace GXLightBrowser
   function removeAdNodes() {
     for (const selector of adSelectors) {
       document.querySelectorAll(selector).forEach((node) => {
-        if (node && node.parentNode) {
+        const isPlayerAdContainer = node && (node.matches('.video-ads') || node.matches('.ytp-ad-module'));
+        if (node && node.parentNode && !isPlayerAdContainer) {
           node.remove();
         }
       });
     }
   }
 
-  let wasInAd = false;
-  let skippedCurrentAd = false;
-  let previousMuted = false;
-  let previousRate = 1.0;
-  function recoverVideoPlayback() {
-    const player = document.querySelector('.html5-video-player');
-    if (!player) return;
-
-    const inAd = player.classList.contains('ad-showing') ||
-                 player.classList.contains('ad-interrupting');
-
-    document.querySelectorAll('video').forEach((video) => {
-      try {
-        if (inAd) {
-          if (!wasInAd) {
-            previousMuted = video.muted;
-            previousRate = video.playbackRate || 1.0;
-            skippedCurrentAd = false;
-          }
-          video.muted = true;
-          if (!skippedCurrentAd && Number.isFinite(video.duration) && video.duration > 0) {
-            video.currentTime = video.duration - 0.1;
-            skippedCurrentAd = true;
-          }
-          video.playbackRate = 16.0;
-          if (video.paused) video.play().catch(() => {});
-        } else if (wasInAd) {
-          video.muted = previousMuted;
-          video.playbackRate = previousRate;
-          skippedCurrentAd = false;
-          if (video.paused) video.play().catch(() => {});
-        }
-      } catch (_) {}
-    });
-    wasInAd = inAd;
-  }
-
   function run() {
     injectStyle();
     clickSkips();
     removeAdNodes();
-    recoverVideoPlayback();
   }
 
   window.__gxLightRunYouTubeShields = run;
   run();
-  setInterval(run, 150);
+  setInterval(run, 1000);
   const observe = () => {
     if (!document.documentElement) return;
     new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+    run();
   };
   if (document.documentElement) observe();
   else document.addEventListener('DOMContentLoaded', observe, { once: true });
@@ -3728,6 +3820,7 @@ namespace GXLightBrowser
                     web.CoreWebView2.DocumentTitleChanged -= DocumentTitleChangedHandler;
                     web.CoreWebView2.FaviconChanged -= FaviconChangedHandler;
                     web.CoreWebView2.WebMessageReceived -= WebMessageReceived;
+                    web.CoreWebView2.ContainsFullScreenElementChanged -= ContainsFullScreenElementChanged;
                 }
             }
             catch (Exception ex)

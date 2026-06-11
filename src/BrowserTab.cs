@@ -19,6 +19,7 @@ namespace GXLightBrowser
         public int IslandId { get; set; }
         public bool IsSelectedForIsland { get; set; }
         public bool IsPinned { get; set; }
+        public bool IsCompact { get; set; }
         public string SuspendedUrl { get; set; }
         public string SuspendedTitle { get; set; }
         public bool IsSuspended { get; set; }

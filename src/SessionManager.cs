@@ -34,13 +34,13 @@ namespace GXLightBrowser
                     sb.AppendLine("CollapsedIsland:" + islandId);
                 }
 
-                sb.AppendLine("FormatVersion:2");
+                sb.AppendLine("FormatVersion:3");
                 foreach (var tab in tabs)
                 {
                     string url = tab.IsSuspended ? tab.SuspendedUrl : (tab.WebView != null && tab.WebView.Source != null ? tab.WebView.Source.ToString() : "gxlight://home");
                     string title = tab.IsSuspended ? tab.SuspendedTitle : tab.Page.Text;
-                    sb.AppendLine(string.Format("Tab2:{0}|{1}|{2}|{3}",
-                        Encode(url), Encode(title), tab.IslandId, tab.IsSuspended));
+                    sb.AppendLine(string.Format("Tab3:{0}|{1}|{2}|{3}|{4}",
+                        Encode(url), Encode(title), tab.IslandId, tab.IsSuspended, tab.IsCompact));
                 }
 
                 AppPaths.Ensure();
@@ -115,6 +115,19 @@ namespace GXLightBrowser
                                 td2.IslandId = ParseInt(t2[2], 0);
                                 td2.IsSuspended = ParseBool(t2[3], true);
                                 data.Tabs.Add(td2);
+                            }
+                            break;
+                        case "Tab3":
+                            string[] t3 = val.Split('|');
+                            if (t3.Length == 5)
+                            {
+                                TabData td3 = new TabData();
+                                td3.Url = Decode(t3[0]);
+                                td3.Title = Decode(t3[1]);
+                                td3.IslandId = ParseInt(t3[2], 0);
+                                td3.IsSuspended = ParseBool(t3[3], true);
+                                td3.IsCompact = ParseBool(t3[4], false);
+                                data.Tabs.Add(td3);
                             }
                             break;
                         case "Tab":
@@ -213,5 +226,6 @@ namespace GXLightBrowser
         public string Title { get; set; }
         public int IslandId { get; set; }
         public bool IsSuspended { get; set; }
+        public bool IsCompact { get; set; }
     }
 }
