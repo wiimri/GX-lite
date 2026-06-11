@@ -25,6 +25,7 @@ function verifyInternalPageRoutes() {
   const browserForm = fs.readFileSync(path.join(root, "src", "BrowserForm.cs"), "utf8");
   const updateManifest = fs.readFileSync(path.join(root, "src", "UpdateManifest.cs"), "utf8");
   const internalPages = fs.readFileSync(path.join(root, "src", "InternalPages.cs"), "utf8");
+  const installer = fs.readFileSync(path.join(root, "installer", "GXLightBrowser.iss"), "utf8");
   const requirements = [
     [browserForm.includes('pageName == "updated"'), "gxlight://updated route is missing"],
     [browserForm.includes('case "home":'), "internal home fallback route is missing"],
@@ -37,6 +38,14 @@ function verifyInternalPageRoutes() {
     [browserForm.includes('ConfigureButton(_shield, "Block Ads On"'), "visible Block Ads button is missing"],
     [browserForm.includes("installInitialDataGuard('ytInitialPlayerResponse')"), "initial YouTube player response guard is missing"],
     [browserForm.includes("sanitizePlayerData"), "YouTube player response sanitizer is missing"],
+    [browserForm.includes("IMessageFilter"), "WebView2 native shortcut handling is missing"],
+    [browserForm.includes("PreFilterMessage"), "native keyboard message routing is missing"],
+    [browserForm.includes("IsBrowserShortcut"), "browser shortcut routing is missing"],
+    [browserForm.includes("PrepareUpdateAsync"), "background update preparation is missing"],
+    [browserForm.includes("/RELAUNCH"), "update relaunch argument is missing"],
+    [internalPages.includes("gxlight:update:prepare"), "update preparation action is missing"],
+    [installer.includes("RestartApplications=yes"), "installer application restart support is missing"],
+    [installer.includes("ShouldLaunchApp"), "installer relaunch condition is missing"],
     [!browserForm.includes("video.currentTime = video.duration"), "YouTube Shields still accelerates ads"],
     [!browserForm.includes("video.playbackRate = 16"), "YouTube Shields still changes playback speed"]
   ];

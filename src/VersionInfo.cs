@@ -2,17 +2,17 @@ namespace GXLightBrowser
 {
     internal static class VersionInfo
     {
-        public const string CurrentVersion = "1.18";
-        public const string ReleaseName = "GX Light Browser 1.18";
+        public const string CurrentVersion = "1.19";
+        public const string ReleaseName = "GX Light Browser 1.19";
 
         public static string[] Highlights()
         {
             return new string[]
             {
-                "YouTube Shields elimina instrucciones publicitarias de la respuesta del reproductor antes de reproducirlas.",
-                "La barra superior incorpora un boton visible Block Ads On/Off.",
-                "Los favicons usan varias fuentes y se guardan en un cache local por dominio.",
-                "El bloqueo conserva los datos normales del video sin acelerar anuncios ni robar foco."
+                "Las actualizaciones se descargan y verifican en segundo plano sin cerrar GX Light.",
+                "Cuando una actualizacion esta lista, GX Light avisa y permite reiniciar para aplicarla.",
+                "El instalador silencioso vuelve a abrir el navegador y restaura la sesion.",
+                "Los atajos Ctrl+T, Ctrl+W y demas comandos funcionan aun con WebView2 enfocado."
             };
         }
     }

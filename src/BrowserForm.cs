@@ -14,7 +14,7 @@ using System.Windows.Forms;
 
 namespace GXLightBrowser
 {
-    public sealed class BrowserForm : Form
+    public sealed class BrowserForm : Form, IMessageFilter
     {
         private const string HomeUrl = "gxlight://home";
         private const string UpdatedUrl = "gxlight://updated";
@@ -68,6 +68,8 @@ namespace GXLightBrowser
         private FormWindowState _previousWindowState;
         private Rectangle _previousBounds;
         private bool _previousTopMost;
+        private string _preparedUpdateInstallerPath;
+        private UpdateManifest _preparedUpdateManifest;
 
         public BrowserForm()
         {
@@ -79,12 +81,17 @@ namespace GXLightBrowser
             Font = new Font("Segoe UI", 9f);
             DoubleBuffered = true;
             KeyPreview = true;
+            Application.AddMessageFilter(this);
             try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
 
             BuildLayout();
             SizeChanged += delegate { ApplyResponsiveMode(); };
             FormClosing += BrowserFormClosing;
-            FormClosed += delegate { DisposeWebViewsForShutdown(); };
+            FormClosed += delegate
+            {
+                Application.RemoveMessageFilter(this);
+                DisposeWebViewsForShutdown();
+            };
             Load += async delegate
             {
                 NativeChrome.ApplyDarkFrame(this);
@@ -397,8 +404,37 @@ namespace GXLightBrowser
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        public bool PreFilterMessage(ref Message message)
+        {
+            const int WmKeyDown = 0x0100;
+            const int WmSysKeyDown = 0x0104;
+            if ((message.Msg != WmKeyDown && message.Msg != WmSysKeyDown) || !ContainsFocus)
+            {
+                return false;
+            }
+
+            Keys keyData = (Keys)((int)message.WParam) | Control.ModifierKeys;
+            if (!IsBrowserShortcut(keyData))
+            {
+                return false;
+            }
+
+            BeginInvoke((MethodInvoker)delegate { HandleBrowserShortcut(keyData); });
+            return true;
+        }
+
         private bool HandleBrowserShortcut(Keys keyData)
         {
+            if (keyData == (Keys.Control | Keys.N))
+            {
+                StartNewWindow();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.Shift | Keys.N))
+            {
+                MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light");
+                return true;
+            }
             if (keyData == (Keys.Control | Keys.W))
             {
                 CloseTab(_tabs.SelectedTab);
@@ -407,6 +443,11 @@ namespace GXLightBrowser
             if (keyData == (Keys.Control | Keys.T))
             {
                 Task ignored = CreateTabAsync(HomeUrl);
+                return true;
+            }
+            if (keyData == (Keys.Alt | Keys.T))
+            {
+                Task ignored = CreateNewIslandTabAsync();
                 return true;
             }
             if (keyData == (Keys.Control | Keys.L))
@@ -430,7 +471,54 @@ namespace GXLightBrowser
                 AddCurrentBookmark();
                 return true;
             }
+            if (keyData == (Keys.Control | Keys.F))
+            {
+                ExecuteFind();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.R))
+            {
+                WebView2 web = ActiveWebView();
+                if (web != null) web.Reload();
+                return true;
+            }
+            if (keyData == (Keys.Alt | Keys.P))
+            {
+                NavigateInternal("settings");
+                return true;
+            }
+            if (keyData == Keys.F12)
+            {
+                WebView2 web = ActiveWebView();
+                if (web != null && web.CoreWebView2 != null) web.CoreWebView2.OpenDevToolsWindow();
+                return true;
+            }
             return false;
+        }
+
+        private static bool IsBrowserShortcut(Keys keyData)
+        {
+            return keyData == (Keys.Control | Keys.T) ||
+                keyData == (Keys.Control | Keys.W) ||
+                keyData == (Keys.Control | Keys.L) ||
+                keyData == (Keys.Control | Keys.J) ||
+                keyData == (Keys.Control | Keys.H) ||
+                keyData == (Keys.Control | Keys.D) ||
+                keyData == (Keys.Control | Keys.F) ||
+                keyData == (Keys.Control | Keys.R) ||
+                keyData == (Keys.Control | Keys.N) ||
+                keyData == (Keys.Control | Keys.Shift | Keys.N) ||
+                keyData == (Keys.Alt | Keys.T) ||
+                keyData == (Keys.Alt | Keys.P) ||
+                keyData == Keys.F12;
+        }
+
+        private async Task CreateNewIslandTabAsync()
+        {
+            _activeIslandId = _nextIslandId++;
+            _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
+            await CreateTabAsync(HomeUrl);
+            _activeIslandId = 0;
         }
 
         private async Task InitializeAsync()
@@ -833,6 +921,12 @@ namespace GXLightBrowser
                 {
                     Navigate(web, url);
                 }
+                return;
+            }
+
+            if (string.Equals(message, "gxlight:update:prepare", StringComparison.Ordinal))
+            {
+                Task ignored = CheckForUpdatesAsync(true);
                 return;
             }
 
@@ -1301,13 +1395,7 @@ namespace GXLightBrowser
             menu.ForeColor = Theme.Text;
             menu.ShowImageMargin = false;
             menu.Items.Add("New tab                                      Ctrl+T", null, async delegate { await CreateTabAsync(HomeUrl); });
-            menu.Items.Add("New tab in tab island                       Alt+T", null, async delegate
-            {
-                _activeIslandId = _nextIslandId++;
-                _islandColors[_activeIslandId] = ColorFromText(GetTabUrl(ActiveTab()));
-                await CreateTabAsync(HomeUrl);
-                _activeIslandId = 0;
-            });
+            menu.Items.Add("New tab in tab island                       Alt+T", null, async delegate { await CreateNewIslandTabAsync(); });
             menu.Items.Add("New window                                  Ctrl+N", null, delegate { StartNewWindow(); });
             menu.Items.Add("New private window                          Ctrl+Shift+N", null, delegate { MessageBox.Show(this, "Modo privado aun no esta implementado.", "GX Light"); });
             menu.Items.Add(new ToolStripSeparator());
@@ -1389,6 +1477,11 @@ namespace GXLightBrowser
             menu.Items.Add("Find...                                     Ctrl+F", null, delegate { ExecuteFind(); });
             menu.Items.Add("Settings                                    Alt+P", null, delegate { NavigateInternal("settings"); });
             menu.Items.Add("Buscar actualizaciones", null, async delegate { await CheckForUpdatesAsync(true); });
+            if (!string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) && File.Exists(_preparedUpdateInstallerPath))
+            {
+                string preparedVersion = _preparedUpdateManifest == null ? string.Empty : " v" + _preparedUpdateManifest.Version;
+                menu.Items.Add("Reiniciar para aplicar" + preparedVersion, null, delegate { ApplyPreparedUpdateAndRestart(); });
+            }
             menu.Items.Add("Update notes                                v" + _updateManifest.Version, null, delegate { NavigateActive(UpdatedUrl); });
             menu.Items.Add("Developer tools                             F12", null, delegate
             {
@@ -1422,24 +1515,31 @@ namespace GXLightBrowser
                 return;
             }
 
-            DialogResult result = MessageBox.Show(this,
-                "Hay una nueva version disponible: " + latest.Version + Environment.NewLine +
-                "El instalador actualizara GX Light y conservara tu perfil, passwords, favoritos y sesion." +
-                Environment.NewLine + Environment.NewLine + "¿Descargar y abrir el instalador ahora?",
-                "Actualizacion disponible", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-            if (result == DialogResult.Yes && !string.IsNullOrWhiteSpace(latest.DownloadUrl))
-            {
-                await DownloadAndLaunchUpdateAsync(latest);
-            }
+            await PrepareUpdateAsync(latest, showCurrentMessage);
         }
 
-        private async Task DownloadAndLaunchUpdateAsync(UpdateManifest manifest)
+        private async Task PrepareUpdateAsync(UpdateManifest manifest, bool userRequested)
         {
+            if (manifest == null || string.IsNullOrWhiteSpace(manifest.DownloadUrl))
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) && File.Exists(_preparedUpdateInstallerPath))
+            {
+                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia GX Light para aplicarla.";
+                if (userRequested)
+                {
+                    PromptToApplyPreparedUpdate();
+                }
+                return;
+            }
+
             string installerPath = Path.Combine(Path.GetTempPath(), "GXLightBrowser-Setup-" + manifest.Version + "-x64.exe");
             string hashPath = installerPath + ".sha256.txt";
             try
             {
-                _status.Text = "Descargando actualizacion " + manifest.Version + "...";
+                _status.Text = "Descargando actualizacion " + manifest.Version + " en segundo plano...";
                 using (WebClient client = new WebClient())
                 {
                     client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
@@ -1453,26 +1553,76 @@ namespace GXLightBrowser
                 if (!string.IsNullOrWhiteSpace(manifest.Sha256Url) && !VerifyInstallerHash(installerPath, hashPath))
                 {
                     File.Delete(installerPath);
-                    MessageBox.Show(this, "La firma SHA-256 de la actualizacion no coincide. No se abrira el instalador.",
+                    MessageBox.Show(this, "La firma SHA-256 de la actualizacion no coincide. No se aplicara el instalador.",
                         "Actualizacion rechazada", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
 
+                _preparedUpdateInstallerPath = installerPath;
+                _preparedUpdateManifest = manifest;
+                _status.Text = "Actualizacion " + manifest.Version + " lista. Reinicia GX Light para aplicarla.";
+                PromptToApplyPreparedUpdate();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Update download failed: " + ex.Message);
+                if (userRequested)
+                {
+                    MessageBox.Show(this, "No se pudo descargar o preparar la actualizacion." + Environment.NewLine + ex.Message,
+                        "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            finally
+            {
+                if (string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath))
+                {
+                    UpdateStatus();
+                }
+            }
+        }
+
+        private void PromptToApplyPreparedUpdate()
+        {
+            if (string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) || !File.Exists(_preparedUpdateInstallerPath))
+            {
+                return;
+            }
+
+            string version = _preparedUpdateManifest == null ? string.Empty : " " + _preparedUpdateManifest.Version;
+            DialogResult result = MessageBox.Show(this,
+                "La actualizacion" + version + " se descargo y verifico correctamente." + Environment.NewLine +
+                "GX Light puede seguir abierto hasta que decidas aplicarla." + Environment.NewLine + Environment.NewLine +
+                "¿Reiniciar y actualizar ahora?",
+                "Actualizacion lista", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (result == DialogResult.Yes)
+            {
+                ApplyPreparedUpdateAndRestart();
+            }
+        }
+
+        private void ApplyPreparedUpdateAndRestart()
+        {
+            if (string.IsNullOrWhiteSpace(_preparedUpdateInstallerPath) || !File.Exists(_preparedUpdateInstallerPath))
+            {
+                MessageBox.Show(this, "El instalador preparado ya no esta disponible. Busca la actualizacion nuevamente.",
+                    "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
                 SaveSession();
-                ProcessStartInfo startInfo = new ProcessStartInfo(installerPath);
+                ProcessStartInfo startInfo = new ProcessStartInfo(_preparedUpdateInstallerPath);
                 startInfo.UseShellExecute = true;
+                startInfo.Arguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RELAUNCH";
                 Process.Start(startInfo);
                 Close();
             }
             catch (Exception ex)
             {
-                Logger.Error("Update download failed: " + ex.Message);
-                MessageBox.Show(this, "No se pudo descargar o abrir la actualizacion." + Environment.NewLine + ex.Message,
+                Logger.Error("Prepared update launch failed: " + ex.Message);
+                MessageBox.Show(this, "No se pudo iniciar la actualizacion." + Environment.NewLine + ex.Message,
                     "Actualizaciones", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                UpdateStatus();
             }
         }
 

@@ -74,7 +74,7 @@ namespace GXLightBrowser
             string links = string.Empty;
             if (!string.IsNullOrWhiteSpace(activeManifest.DownloadUrl))
             {
-                links += "<a class='link' data-open-url='" + EscapeHtml(activeManifest.DownloadUrl) + "' href='" + EscapeHtml(activeManifest.DownloadUrl) + "'>Descargar actualizacion</a>";
+                links += "<a class='link' data-prepare-update href='#'>Buscar y preparar actualizacion</a>";
             }
             if (!string.IsNullOrWhiteSpace(activeManifest.SourceUrl))
             {
@@ -97,7 +97,7 @@ namespace GXLightBrowser
                 (string.IsNullOrWhiteSpace(activeManifest.PublishedAt) ? string.Empty : " - Publicado: <b>" + EscapeHtml(activeManifest.PublishedAt) + "</b>") + "</p>" +
                 "<ul>" + items.ToString() + "</ul><div class='links'>" + links + "</div></section>" +
                 "<section class='history'><h1>Bitacora de versiones</h1>" + history + "</section></div></main>" +
-                "<script>document.querySelectorAll('[data-open-url]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();window.chrome.webview.postMessage('gxlight:navigate:'+link.getAttribute('data-open-url'));});});</script>" +
+                "<script>document.querySelectorAll('[data-open-url]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();window.chrome.webview.postMessage('gxlight:navigate:'+link.getAttribute('data-open-url'));});});document.querySelectorAll('[data-prepare-update]').forEach(function(link){link.addEventListener('click',function(event){event.preventDefault();window.chrome.webview.postMessage('gxlight:update:prepare');});});</script>" +
                 "</body></html>";
         }
 

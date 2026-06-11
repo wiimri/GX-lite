@@ -4,7 +4,7 @@ Este archivo es el historial estable de GX Light Browser. Sirve como seccion de 
 
 ## Version actual
 
-- Version publicada: `1.18`
+- Version publicada: `1.19`
 - Fecha: `2026-06-11`
 - Codigo fuente: <https://github.com/wiimri/GX-lite>
 - Tags: <https://github.com/wiimri/GX-lite/tags>
@@ -20,6 +20,20 @@ https://raw.githubusercontent.com/wiimri/GX-lite/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los links y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, GX Light usa las notas locales compiladas como respaldo.
+
+## v1.19 - Actualizador preparado y atajos WebView2
+
+Fecha: `2026-06-11`
+
+Cambios:
+
+- Las actualizaciones se descargan y validan por SHA-256 en segundo plano sin cerrar el navegador.
+- Cuando el instalador esta listo, GX Light muestra un aviso y permite seguir navegando hasta reiniciar.
+- El menu muestra `Reiniciar para aplicar` mientras exista una actualizacion preparada.
+- Al aplicar la actualizacion, el instalador trabaja en modo silencioso y vuelve a abrir GX Light.
+- La sesion se guarda antes del reinicio para restaurar las pestanas abiertas.
+- La pagina Update notes puede iniciar la preparacion de una actualizacion dentro del navegador.
+- Un filtro nativo de mensajes captura los comandos antes del control WebView2 para que `Ctrl+T`, `Ctrl+W`, `Ctrl+L`, `Ctrl+J`, `Ctrl+H`, `Ctrl+D`, `Ctrl+F`, `Ctrl+R`, `Ctrl+N`, `Alt+T`, `Alt+P` y `F12` funcionen con la pagina enfocada.
 
 ## v1.18 - Bloqueo del reproductor, boton visible y favicons
 

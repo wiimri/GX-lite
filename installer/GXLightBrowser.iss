@@ -1,5 +1,5 @@
 #define MyAppName "GX Light Browser"
-#define MyAppVersion "1.18"
+#define MyAppVersion "1.19"
 #define MyAppPublisher "wiimri"
 #define MyAppURL "https://github.com/wiimri/GX-lite"
 #define MyAppExeName "GXLightBrowser.exe"
@@ -17,7 +17,7 @@ DisableProgramGroupPage=yes
 PrivilegesRequired=admin
 UsePreviousAppDir=no
 CloseApplications=yes
-RestartApplications=no
+RestartApplications=yes
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir=..\dist
@@ -50,7 +50,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 [Run]
 Filename: "{tmp}\ndp48-web.exe"; Parameters: "/q /norestart"; StatusMsg: "Instalando .NET Framework 4.8..."; Check: not IsDotNet48Installed; Flags: waituntilterminated
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Instalando Microsoft Edge WebView2 Runtime..."; Check: not IsWebView2Installed; Flags: waituntilterminated
-Filename: "{app}\{#MyAppExeName}"; Description: "Abrir {#MyAppName}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Abrir {#MyAppName}"; Flags: nowait postinstall; Check: ShouldLaunchApp
 
 [Code]
 const
@@ -78,6 +78,26 @@ begin
   Result :=
     HasWebView2Version(HKLM32, 'SOFTWARE\Microsoft\EdgeUpdate\Clients\' + WebView2ClientId) or
     HasWebView2Version(HKCU, 'Software\Microsoft\EdgeUpdate\Clients\' + WebView2ClientId);
+end;
+
+function CmdLineParamExists(Param: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+  begin
+    if CompareText(ParamStr(I), Param) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+function ShouldLaunchApp: Boolean;
+begin
+  Result := (not WizardSilent) or CmdLineParamExists('/RELAUNCH');
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
