@@ -52,16 +52,17 @@ catch {
 }
 
 if ($null -eq $release) {
-    $payload = @{
+    $payloadJson = @{
         tag_name = $tag
         target_commitish = "main"
         name = $Title
         body = $Notes
         draft = $false
         prerelease = $false
-    } | ConvertTo-Json
+    } | ConvertTo-Json -Compress
+    $payload = [System.Text.Encoding]::UTF8.GetBytes($payloadJson)
     $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repository/releases" `
-        -Headers $headers -Method Post -Body $payload -ContentType "application/json"
+        -Headers $headers -Method Post -Body $payload -ContentType "application/json; charset=utf-8"
 }
 
 $uploadBase = $release.upload_url.Split("{")[0]
