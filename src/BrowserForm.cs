@@ -4041,10 +4041,20 @@ namespace GXLightBrowser
                 {
                 }
 
-                Uri faviconUri;
-                if (!string.IsNullOrEmpty(candidate) && Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                if (!string.IsNullOrEmpty(candidate))
                 {
-                    candidates.Add(faviconUri);
+                    if (candidate.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (ProcessDataUriFavicon(candidate, pageUri, tab)) return;
+                    }
+                    else
+                    {
+                        Uri faviconUri;
+                        if (Uri.TryCreate(candidate, UriKind.Absolute, out faviconUri))
+                        {
+                            candidates.Add(faviconUri);
+                        }
+                    }
                 }
 
                 try
@@ -4052,10 +4062,20 @@ namespace GXLightBrowser
                     string iconResult = await core.ExecuteScriptAsync(
                         "(document.querySelector('link[rel~=\"icon\"]') || {}).href || ''");
                     string iconHref = DecodeScriptString(iconResult);
-                    Uri documentIcon;
-                    if (!string.IsNullOrWhiteSpace(iconHref) && Uri.TryCreate(iconHref, UriKind.Absolute, out documentIcon))
+                    if (!string.IsNullOrWhiteSpace(iconHref))
                     {
-                        candidates.Add(documentIcon);
+                        if (iconHref.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (ProcessDataUriFavicon(iconHref, pageUri, tab)) return;
+                        }
+                        else
+                        {
+                            Uri documentIcon;
+                            if (Uri.TryCreate(iconHref, UriKind.Absolute, out documentIcon))
+                            {
+                                candidates.Add(documentIcon);
+                            }
+                        }
                     }
                 }
                 catch
@@ -4094,7 +4114,7 @@ namespace GXLightBrowser
                 using (WebClient client = new WebClient())
                 {
                     client.Headers[HttpRequestHeader.UserAgent] =
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) GXLightBrowser/" + VersionInfo.CurrentVersion;
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edge/120.0.0.0";
                     byte[] bytes = await client.DownloadDataTaskAsync(faviconUri);
                     using (MemoryStream stream = new MemoryStream(bytes))
                     using (Image image = Image.FromStream(stream))
@@ -4110,6 +4130,57 @@ namespace GXLightBrowser
                 Logger.Info("Favicon candidate failed " + faviconUri + ": " + ex.Message);
                 return false;
             }
+        }
+
+        private bool ProcessDataUriFavicon(string dataUri, Uri pageUri, BrowserTab tab)
+        {
+            byte[] bytes;
+            if (TryParseDataUri(dataUri, out bytes))
+            {
+                try
+                {
+                    using (MemoryStream stream = new MemoryStream(bytes))
+                    using (Image image = Image.FromStream(stream))
+                    {
+                        SetTabFavicon(tab, image);
+                        CacheTabFavicon(tab, pageUri == null ? null : pageUri.AbsoluteUri);
+                        RebuildTabStrip();
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Info("Failed to parse image from data URI: " + ex.Message);
+                }
+            }
+            return false;
+        }
+
+        private static bool TryParseDataUri(string uriString, out byte[] bytes)
+        {
+            bytes = null;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(uriString) || !uriString.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+                int commaIndex = uriString.IndexOf(',');
+                if (commaIndex < 0) return false;
+
+                string header = uriString.Substring(0, commaIndex);
+                string dataPart = uriString.Substring(commaIndex + 1);
+
+                if (header.IndexOf(";base64", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    bytes = Convert.FromBase64String(dataPart.Trim());
+                    return bytes.Length > 0;
+                }
+            }
+            catch
+            {
+            }
+            return false;
         }
 
         private static void SetTabFavicon(BrowserTab tab, Image image)
