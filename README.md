@@ -6,6 +6,16 @@ Gan Browser es un navegador liviano y enfocado en privacidad para Windows. Usa W
 
 Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion sea mas pequena y aproveche el runtime WebView2 que ya viene instalado o disponible en muchos equipos Windows.
 
+## Descargar Gan Browser
+
+[![Descargar Gan Browser para Windows](https://img.shields.io/badge/Descargar-Gan_Browser_para_Windows-4CE0BE?style=for-the-badge&logo=windows11&logoColor=11151B)](https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.exe)
+
+- [Descargar el instalador de la ultima version](https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.exe)
+- [Ver todas las versiones publicadas](https://github.com/wiimri/Gan-Browser/releases)
+- [Comprobar el SHA-256 del instalador](https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.sha256.txt)
+
+> Para instalar el navegador, descarga `GanBrowser-Setup-x64.exe` desde **Releases**. La opcion **Code > Download ZIP** descarga solamente el codigo fuente.
+
 ## Caracteristicas actuales
 
 - Navegacion con multiples pestanas.
