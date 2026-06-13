@@ -4,8 +4,8 @@ Este archivo es el historial estable de Gan Browser, anteriormente llamado GX Li
 
 ## Version actual
 
-- Version publicada: `2.0`
-- Fecha: `2026-06-11`
+- Version publicada: `2.1`
+- Fecha: `2026-06-13`
 - Codigo fuente: <https://github.com/wiimri/Gan-Browser>
 - Tags: <https://github.com/wiimri/Gan-Browser/tags>
 
@@ -20,6 +20,18 @@ https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los enlaces y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, Gan Browser usa las notas locales compiladas como respaldo.
+
+## v2.1 - Compartir y Exportar Pestañas
+
+Fecha: `2026-06-13`
+
+Cambios:
+
+- **Compartir y guardar pestañas**: Nueva opción añadida al menú principal para administrar las pestañas abiertas colectivamente.
+- **Copiar todas las URLs**: Permite copiar de un solo clic al portapapeles todas las direcciones (URLs) de las pestañas que estén abiertas en la sesión activa.
+- **Exportar pestañas**: Exporta el listado completo de URLs de las pestañas abiertas a un archivo de texto plano (`.txt`), una por línea.
+- **Importar pestañas**: Abre y procesa un archivo `.txt` cargando de manera automática todas las URLs contenidas en él en pestañas individuales del navegador.
+- **Versión 2.1**: Bump de versión global del navegador, instalador y manifiesto remoto.
 
 ## v2.0 - Gan Browser
 

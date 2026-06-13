@@ -1,4 +1,4 @@
-﻿using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using System;
 using System.Collections.Generic;
@@ -1696,6 +1696,13 @@ namespace GXLightBrowser
             bookmarks.DropDownItems.Add(CreateMenuItem("Exportar marcadores HTML...", "", delegate { ExportBookmarks(); }));
             menu.Items.Add(bookmarks);
 
+            ToolStripMenuItem tabSharing = new ToolStripMenuItem("Compartir / Exportar pestañas");
+            tabSharing.ForeColor = Theme.Text;
+            tabSharing.DropDownItems.Add(CreateMenuItem("Copiar todas las URLs", "", delegate { CopyAllTabUrls(); }));
+            tabSharing.DropDownItems.Add(CreateMenuItem("Exportar pestañas a archivo de texto...", "", delegate { ExportTabsToTextFile(); }));
+            tabSharing.DropDownItems.Add(CreateMenuItem("Importar pestañas desde archivo de texto...", "", delegate { ImportTabsFromTextFile(); }));
+            menu.Items.Add(tabSharing);
+
             menu.Items.Add(CreateMenuItem("Extensiones", "", async delegate { await NavigateExtensionsPageAsync(); }));
 
             ToolStripMenuItem passwords = new ToolStripMenuItem("Contraseñas y autocompletado");
@@ -2395,6 +2402,134 @@ namespace GXLightBrowser
             SaveBookmarks();
             RebuildBookmarksBar();
             MessageBox.Show(this, "Favorito guardado en la barra.", "Bookmarks");
+        }
+
+        private void CopyAllTabUrls()
+        {
+            try
+            {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < _tabs.TabPages.Count; i++)
+                {
+                    BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                    if (tab != null)
+                    {
+                        string url = GetTabUrl(tab);
+                        if (!string.IsNullOrWhiteSpace(url))
+                        {
+                            sb.AppendLine(url);
+                        }
+                    }
+                }
+
+                string urlsText = sb.ToString();
+                if (string.IsNullOrWhiteSpace(urlsText))
+                {
+                    MessageBox.Show(this, "No hay pestañas abiertas con direcciones válidas.", "Copiar URLs", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                Clipboard.SetText(urlsText);
+                _status.Text = "Se copiaron todas las URLs al portapapeles (" + _tabs.TabPages.Count + " pestañas).";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Error al copiar las URLs: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ExportTabsToTextFile()
+        {
+            try
+            {
+                List<string> urls = new List<string>();
+                for (int i = 0; i < _tabs.TabPages.Count; i++)
+                {
+                    BrowserTab tab = _tabs.TabPages[i].Tag as BrowserTab;
+                    if (tab != null)
+                    {
+                        string url = GetTabUrl(tab);
+                        if (!string.IsNullOrWhiteSpace(url))
+                        {
+                            urls.Add(url);
+                        }
+                    }
+                }
+
+                if (urls.Count == 0)
+                {
+                    MessageBox.Show(this, "No hay pestañas abiertas para exportar.", "Exportar pestañas", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                using (SaveFileDialog dialog = new SaveFileDialog())
+                {
+                    dialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                    dialog.Title = "Exportar pestañas abiertas";
+                    dialog.FileName = "pestañas_abiertas.txt";
+
+                    if (dialog.ShowDialog(this) == DialogResult.OK)
+                    {
+                        File.WriteAllLines(dialog.FileName, urls, Encoding.UTF8);
+                        _status.Text = "Se exportaron " + urls.Count + " pestañas exitosamente.";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Error al exportar las pestañas: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private async void ImportTabsFromTextFile()
+        {
+            try
+            {
+                using (OpenFileDialog dialog = new OpenFileDialog())
+                {
+                    dialog.Filter = "Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*";
+                    dialog.Title = "Importar pestañas desde archivo";
+
+                    if (dialog.ShowDialog(this) == DialogResult.OK)
+                    {
+                        string[] lines = File.ReadAllLines(dialog.FileName, Encoding.UTF8);
+                        int count = 0;
+                        foreach (string line in lines)
+                        {
+                            if (string.IsNullOrWhiteSpace(line))
+                            {
+                                continue;
+                            }
+
+                            string url = line.Trim();
+                            if (url.IndexOf("://", StringComparison.Ordinal) < 0 && !url.StartsWith("about:", StringComparison.Ordinal) && !url.StartsWith("gxlight:", StringComparison.Ordinal))
+                            {
+                                url = "https://" + url;
+                            }
+
+                            Uri pageUri;
+                            if (Uri.TryCreate(url, UriKind.Absolute, out pageUri))
+                            {
+                                await CreateTabAsync(url);
+                                count++;
+                            }
+                        }
+
+                        if (count > 0)
+                        {
+                            _status.Text = "Se importaron e iniciaron " + count + " pestañas.";
+                        }
+                        else
+                        {
+                            MessageBox.Show(this, "No se encontraron URLs válidas en el archivo.", "Importar pestañas", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Error al importar las pestañas: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void ImportBookmarks()
