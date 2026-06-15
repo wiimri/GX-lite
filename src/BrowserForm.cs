@@ -1847,14 +1847,10 @@ namespace GXLightBrowser
             try
             {
                 _status.Text = "Descargando actualizacion " + manifest.Version + " en segundo plano...";
-                using (WebClient client = new WebClient())
+                await DownloadUpdateFileWithRetriesAsync(manifest.DownloadUrl, installerPath);
+                if (!string.IsNullOrWhiteSpace(manifest.Sha256Url))
                 {
-                    client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
-                    await client.DownloadFileTaskAsync(new Uri(manifest.DownloadUrl), installerPath);
-                    if (!string.IsNullOrWhiteSpace(manifest.Sha256Url))
-                    {
-                        await client.DownloadFileTaskAsync(new Uri(manifest.Sha256Url), hashPath);
-                    }
+                    await DownloadUpdateFileWithRetriesAsync(manifest.Sha256Url, hashPath);
                 }
 
                 if (string.IsNullOrWhiteSpace(manifest.Sha256Url) || !VerifyInstallerHash(installerPath, hashPath))
@@ -1886,6 +1882,59 @@ namespace GXLightBrowser
                     UpdateStatus();
                 }
             }
+        }
+
+        private static async Task DownloadUpdateFileWithRetriesAsync(string url, string destinationPath)
+        {
+            const int maxAttempts = 3;
+            Exception lastError = null;
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(destinationPath))
+                    {
+                        File.Delete(destinationPath);
+                    }
+
+                    using (WebClient client = new WebClient())
+                    {
+                        client.Headers[HttpRequestHeader.UserAgent] = "GXLightBrowser/" + VersionInfo.CurrentVersion;
+                        await client.DownloadFileTaskAsync(new Uri(url), destinationPath);
+                    }
+
+                    if (!File.Exists(destinationPath) || new FileInfo(destinationPath).Length == 0)
+                    {
+                        throw new IOException("GitHub devolvio un archivo vacio.");
+                    }
+
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    try
+                    {
+                        if (File.Exists(destinationPath))
+                        {
+                            File.Delete(destinationPath);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    Logger.Warning("Update download attempt " + attempt + "/" + maxAttempts + " failed: " + ex.Message);
+                }
+
+                if (attempt < maxAttempts)
+                {
+                    await Task.Delay(attempt * 2500);
+                }
+            }
+
+            throw new IOException("No se pudo descargar la actualizacion despues de " + maxAttempts + " intentos.", lastError);
         }
 
         private void PromptToApplyPreparedUpdate()

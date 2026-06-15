@@ -4,7 +4,7 @@ Este archivo es el historial estable de Gan Browser, anteriormente llamado GX Li
 
 ## Version actual
 
-- Version publicada: `2.2`
+- Version publicada: `2.3`
 - Fecha: `2026-06-15`
 - Codigo fuente: <https://github.com/wiimri/Gan-Browser>
 - Tags: <https://github.com/wiimri/Gan-Browser/tags>
@@ -20,6 +20,17 @@ https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los enlaces y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, Gan Browser usa las notas locales compiladas como respaldo.
+
+## v2.3 - Actualizaciones robustas desde GitHub
+
+Fecha: `2026-06-15`
+
+Cambios:
+
+- El actualizador reintenta hasta tres veces cuando GitHub interrumpe una descarga.
+- Los instaladores parciales o vacios se eliminan antes de cada nuevo intento.
+- Se registran los intentos fallidos para facilitar el diagnostico.
+- Se verifico que el instalador permanente remoto y su SHA-256 responden correctamente y coinciden.
 
 ## v2.2 - Barra de marcadores corregida
 

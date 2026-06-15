@@ -31,8 +31,8 @@ function verifyInternalPageRoutes() {
   const buildInstaller = fs.readFileSync(path.join(root, "scripts", "Build-Installer.ps1"), "utf8");
   const requirements = [
     [browserForm.includes('Text = "Gan Browser"'), "Gan Browser window branding is missing"],
-    [versionInfo.includes('CurrentVersion = "2.2"'), "Gan Browser 2.2 version is missing"],
-    [versionInfo.includes('ReleaseName = "Gan Browser 2.2"'), "Gan Browser release name is missing"],
+    [versionInfo.includes('CurrentVersion = "2.3"'), "Gan Browser 2.3 version is missing"],
+    [versionInfo.includes('ReleaseName = "Gan Browser 2.3"'), "Gan Browser release name is missing"],
     [updateJson.sourceUrl === "https://github.com/wiimri/Gan-Browser", "update manifest repository is incorrect"],
     [updateJson.downloadUrl.endsWith("/GanBrowser-Setup-x64.exe"), "Gan permanent installer URL is incorrect"],
     [updateJson.sha256Url.endsWith("/GanBrowser-Setup-x64.sha256.txt"), "Gan installer SHA-256 URL is incorrect"],
@@ -52,6 +52,9 @@ function verifyInternalPageRoutes() {
     [browserForm.includes("PreFilterMessage"), "native keyboard message routing is missing"],
     [browserForm.includes("IsBrowserShortcut"), "browser shortcut routing is missing"],
     [browserForm.includes("PrepareUpdateAsync"), "background update preparation is missing"],
+    [browserForm.includes("DownloadUpdateFileWithRetriesAsync"), "update downloads do not retry transient GitHub failures"],
+    [browserForm.includes("new FileInfo(destinationPath).Length == 0"), "empty partial update downloads are not rejected"],
+    [browserForm.includes("File.Delete(destinationPath)"), "partial update downloads are not cleaned up"],
     [browserForm.includes('"Mostrar barra de marcadores"'), "bookmarks bar visibility menu action is missing"],
     [browserForm.includes("SetBookmarksBarVisible"), "bookmarks bar visibility persistence is missing"],
     [browserForm.includes("_topLayout.RowStyles[2].Height = bookmarksHeight"), "bookmarks bar fixed-height layout is missing"],
