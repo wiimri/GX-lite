@@ -84,6 +84,30 @@ foreach ($assetGroup in $Assets) {
     $expandedAssets += $assetGroup.Split(",", [System.StringSplitOptions]::RemoveEmptyEntries)
 }
 
+function Upload-ReleaseAsset {
+    param(
+        [string]$UploadUrl,
+        [hashtable]$RequestHeaders,
+        [string]$AssetPath
+    )
+
+    $attempts = 3
+    for ($attempt = 1; $attempt -le $attempts; $attempt++) {
+        try {
+            Invoke-RestMethod -Uri $UploadUrl -Headers $RequestHeaders -Method Post `
+                -ContentType "application/octet-stream" -InFile $AssetPath | Out-Null
+            return
+        }
+        catch {
+            if ($attempt -eq $attempts) {
+                throw
+            }
+            Write-Warning "Upload attempt $attempt failed for $AssetPath. Retrying..."
+            Start-Sleep -Seconds (5 * $attempt)
+        }
+    }
+}
+
 foreach ($asset in $expandedAssets) {
     if (!(Test-Path $asset)) {
         throw "Release asset not found: $asset"
@@ -99,8 +123,7 @@ foreach ($asset in $expandedAssets) {
     }
 
     Write-Host "Uploading $resolved..."
-    Invoke-RestMethod -Uri ($uploadBase + "?name=" + $name) -Headers $headers -Method Post `
-        -ContentType "application/octet-stream" -InFile $resolved | Out-Null
+    Upload-ReleaseAsset -UploadUrl ($uploadBase + "?name=" + $name) -RequestHeaders $headers -AssetPath $resolved
 }
 
 Write-Host "Published $($release.html_url)"

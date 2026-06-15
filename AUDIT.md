@@ -7,6 +7,7 @@ Version actual: 2.1
 ## Revision de mantenimiento 2026-06-15
 
 - Version `2.2`: corregida la barra de marcadores recortada y agregada opcion persistente para mostrarla u ocultarla.
+- El publicador de releases ahora reintenta cargas de artefactos interrumpidas.
 - Build del navegador verificado correctamente.
 - Pruebas de UI, firewall y adblocker verificadas correctamente.
 - Repositorio local confirmado contra `wiimri/Gan-Browser`, rama `main`.

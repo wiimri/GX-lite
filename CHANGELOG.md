@@ -31,6 +31,7 @@ Cambios:
 - La opcion muestra u oculta la barra inmediatamente y conserva la preferencia entre sesiones.
 - La fila de marcadores ahora usa un alto fijo correcto cuando esta visible.
 - Al ocultar la barra se elimina completamente la franja residual bajo la barra de direcciones.
+- El publicador de releases reintenta automaticamente las cargas interrumpidas por GitHub.
 
 ## Bitacora de mantenimiento
 
