@@ -2,8 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Version,
 
-    [Parameter(Mandatory = $true)]
-    [string[]]$Assets,
+    [string[]]$Assets = @(),
 
     [string]$Repository = "wiimri/Gan-Browser",
     [string]$Title = "",
@@ -11,6 +10,20 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $PSScriptRoot
+
+if ($Assets.Count -eq 0) {
+    $Assets = @(
+        (Join-Path $Root "dist\GanBrowser-Setup-$Version-x64.exe"),
+        (Join-Path $Root "dist\GanBrowser-Setup-$Version-x64.sha256.txt"),
+        (Join-Path $Root "dist\GanBrowser-Setup-x64.exe"),
+        (Join-Path $Root "dist\GanBrowser-Setup-x64.sha256.txt"),
+        (Join-Path $Root "dist\GXLightBrowser-Setup-x64.exe"),
+        (Join-Path $Root "dist\GXLightBrowser-Setup-x64.sha256.txt")
+    )
+}
+
+& (Join-Path $PSScriptRoot "Verify-Release.ps1") -Version $Version -RequireAssets
 
 if ([string]::IsNullOrWhiteSpace($Title)) {
     $Title = "Gan Browser $Version"
@@ -72,6 +85,9 @@ foreach ($assetGroup in $Assets) {
 }
 
 foreach ($asset in $expandedAssets) {
+    if (!(Test-Path $asset)) {
+        throw "Release asset not found: $asset"
+    }
     $resolved = Resolve-Path $asset
     $name = [Uri]::EscapeDataString([System.IO.Path]::GetFileName($resolved))
 

@@ -1,8 +1,19 @@
 ﻿# Gan Browser Audit
 
-Fecha: 2026-06-07
+Fecha: 2026-06-15
 
-Version actual: 1.6
+Version actual: 2.1
+
+## Revision de mantenimiento 2026-06-15
+
+- Build del navegador verificado correctamente.
+- Pruebas de UI, firewall y adblocker verificadas correctamente.
+- Repositorio local confirmado contra `wiimri/Gan-Browser`, rama `main`.
+- Version `2.1` confirmada en codigo, instalador, `update.json`, README y CHANGELOG.
+- Se detecto y corrigio `package-lock.json` desfasado en `2.0.0`.
+- Se endurecio la publicacion para exigir instaladores y archivos SHA-256.
+- Se agrego una comprobacion automatica del conjunto de release.
+- Riesgo principal pendiente: ejecutable, instalador y manifiesto remoto aun no tienen firma digital.
 
 ## Estado Actual
 

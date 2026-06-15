@@ -21,6 +21,17 @@ Ese archivo indica cual es la version publicada, el nombre de la release, los en
 
 Si GitHub no responde, Gan Browser usa las notas locales compiladas como respaldo.
 
+## Bitacora de mantenimiento
+
+### 2026-06-15 - Auditoria de repositorio y proceso de release
+
+- Se verifico la compilacion del navegador y las pruebas automatizadas de UI, firewall y adblocker.
+- Se agrego `scripts/Verify-Release.ps1` para validar la sincronizacion de version entre codigo, instalador, manifiesto, paquetes y bitacora.
+- `Publish-Release.ps1` ahora publica por defecto los tres instaladores y sus archivos SHA-256 requeridos.
+- Se sincronizo `package-lock.json` con la version `2.1.0`.
+- Se corrigio la recomendacion del instalador principal.
+- Estos cambios son de mantenimiento y distribucion; no cambian el binario publicado ni suben la version de la aplicacion.
+
 ## v2.1 - Compartir y Exportar Pestañas
 
 Fecha: `2026-06-13`

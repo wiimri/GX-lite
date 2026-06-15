@@ -2,7 +2,9 @@
 
 ## Opcion recomendada
 
-Usar `GXLightBrowser-Setup-x64.exe` desde la ultima release.
+Usar `GanBrowser-Setup-x64.exe` desde la ultima release.
+
+`GXLightBrowser-Setup-x64.exe` se conserva solamente como enlace compatible para clientes antiguos.
 
 El instalador:
 

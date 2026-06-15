@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test:ui": "node scripts/verify-ui-preview.js",
-    "test:firewall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Verify-PrivacyFirewall.ps1"
+    "test:firewall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Verify-PrivacyFirewall.ps1",
+    "test:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Verify-Release.ps1"
   },
   "keywords": [],
   "author": "",

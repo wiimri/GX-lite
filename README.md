@@ -133,7 +133,17 @@ compatibilidad y reparacion en Atlas OS.
 Para publicar el instalador como asset de GitHub Release usando la credencial segura de Git:
 
 ```powershell
-.\scripts\Publish-Release.ps1 -Version 2.1 -Assets .\dist\GanBrowser-Setup-2.1-x64.exe,.\dist\GanBrowser-Setup-x64.exe,.\dist\GXLightBrowser-Setup-x64.exe
+.\scripts\Publish-Release.ps1 -Version 2.1
+```
+
+El script valida que navegador, instalador, manifiesto, paquetes y bitacora usen la misma version. Tambien
+publica los tres instaladores y sus tres archivos SHA-256; el actualizador rechaza una release sin el hash
+permanente `GanBrowser-Setup-x64.sha256.txt`.
+
+Antes de publicar se puede ejecutar solamente la comprobacion:
+
+```powershell
+.\scripts\Verify-Release.ps1 -Version 2.1 -RequireAssets
 ```
 
 El instalador y su comprobacion SHA-256 permanentes pueden descargarse desde:
