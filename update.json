@@ -1,15 +1,14 @@
 {
-  "version": "2.1",
-  "releaseName": "Gan Browser 2.1",
-  "publishedAt": "2026-06-13",
+  "version": "2.2",
+  "releaseName": "Gan Browser 2.2",
+  "publishedAt": "2026-06-15",
   "downloadUrl": "https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.exe",
   "sha256Url": "https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-x64.sha256.txt",
   "sourceUrl": "https://github.com/wiimri/Gan-Browser",
   "changelogUrl": "https://raw.githubusercontent.com/wiimri/Gan-Browser/main/CHANGELOG.md",
   "highlights": [
-    "Opcion en menu para copiar, exportar e importar URLs de pestañas desde archivos de texto.",
-    "GX Light Browser ahora se llama Gan Browser.",
-    "Gan Guard concentra el bloqueo de anuncios y la proteccion de privacidad.",
-    "Gan Pulse reemplaza GX Control para administrar memoria y recursos."
+    "La barra de marcadores ahora se puede mostrar u ocultar desde el menu Marcadores.",
+    "Al ocultar la barra se elimina completamente el espacio residual bajo la barra de direcciones.",
+    "La preferencia de visibilidad se conserva entre sesiones."
   ]
 }

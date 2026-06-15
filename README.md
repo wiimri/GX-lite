@@ -1,6 +1,6 @@
 # Gan Browser
 
-Version actual: `2.1`
+Version actual: `2.2`
 
 Gan Browser es un navegador liviano y enfocado en privacidad para Windows. Usa WebView2 para aprovechar el runtime del sistema y reducir el consumo frente a alternativas basadas en Electron.
 
@@ -47,7 +47,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 - Monitor visible de memoria y Gan Pulse configurable.
 - Pestana de novedades que aparece solo una vez por version instalada.
 - Bitacora acumulativa dentro de Update notes, cargada desde `CHANGELOG.md` en GitHub.
-- Barra de favoritos con apertura en nueva pestana mediante click del scroll.
+- Barra de favoritos con apertura en nueva pestana mediante click del scroll y opcion para mostrarla u ocultarla.
 - Importacion/exportacion de bookmarks en HTML compatible con navegadores.
 - Gestor de bookmarks con carpetas, busqueda, seleccion multiple y eliminacion masiva.
 - Importacion/exportacion de passwords CSV mediante una boveda local protegida con Windows DPAPI.
@@ -63,7 +63,7 @@ Usa Microsoft Edge WebView2 en vez de Electron. Eso permite que la aplicacion se
 
 Gan Browser usa versiones simples pensadas para el proyecto personal:
 
-- linea estable actual: `2.1`
+- linea estable actual: `2.2`
 - cada mejora o correccion del navegador sube la version menor: `2.1`, `2.2`, `2.3` ...
 
 Cuando una nueva version se ejecuta por primera vez, el navegador abre `gxlight://updated` con un resumen corto. La app guarda la ultima version vista en `%LOCALAPPDATA%\GXLightBrowser\settings.ini`, por lo que esa pestana aparece solo una vez por version.
@@ -133,7 +133,7 @@ compatibilidad y reparacion en Atlas OS.
 Para publicar el instalador como asset de GitHub Release usando la credencial segura de Git:
 
 ```powershell
-.\scripts\Publish-Release.ps1 -Version 2.1
+.\scripts\Publish-Release.ps1 -Version 2.2
 ```
 
 El script valida que navegador, instalador, manifiesto, paquetes y bitacora usen la misma version. Tambien
@@ -143,7 +143,7 @@ permanente `GanBrowser-Setup-x64.sha256.txt`.
 Antes de publicar se puede ejecutar solamente la comprobacion:
 
 ```powershell
-.\scripts\Verify-Release.ps1 -Version 2.1 -RequireAssets
+.\scripts\Verify-Release.ps1 -Version 2.2 -RequireAssets
 ```
 
 El instalador y su comprobacion SHA-256 permanentes pueden descargarse desde:
@@ -155,7 +155,7 @@ https://github.com/wiimri/Gan-Browser/releases/latest/download/GanBrowser-Setup-
 
 ## Compatibilidad del cambio de nombre
 
-Gan Browser `2.1` conserva temporalmente varios identificadores internos de GX Light Browser para que la actualizacion no pierda datos:
+Gan Browser `2.2` conserva temporalmente varios identificadores internos de GX Light Browser para que la actualizacion no pierda datos:
 
 - perfil y configuracion en `%LOCALAPPDATA%\GXLightBrowser`
 - ejecutable interno `GXLightBrowser.exe`

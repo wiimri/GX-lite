@@ -4,8 +4,8 @@ Este archivo es el historial estable de Gan Browser, anteriormente llamado GX Li
 
 ## Version actual
 
-- Version publicada: `2.1`
-- Fecha: `2026-06-13`
+- Version publicada: `2.2`
+- Fecha: `2026-06-15`
 - Codigo fuente: <https://github.com/wiimri/Gan-Browser>
 - Tags: <https://github.com/wiimri/Gan-Browser/tags>
 
@@ -20,6 +20,17 @@ https://raw.githubusercontent.com/wiimri/Gan-Browser/main/update.json
 Ese archivo indica cual es la version publicada, el nombre de la release, los enlaces y las novedades que debe mostrar `gxlight://updated`.
 
 Si GitHub no responde, Gan Browser usa las notas locales compiladas como respaldo.
+
+## v2.2 - Barra de marcadores corregida
+
+Fecha: `2026-06-15`
+
+Cambios:
+
+- Se agrego `Mostrar barra de marcadores` al submenu Marcadores, con indicador del estado actual.
+- La opcion muestra u oculta la barra inmediatamente y conserva la preferencia entre sesiones.
+- La fila de marcadores ahora usa un alto fijo correcto cuando esta visible.
+- Al ocultar la barra se elimina completamente la franja residual bajo la barra de direcciones.
 
 ## Bitacora de mantenimiento
 

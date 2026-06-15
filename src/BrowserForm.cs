@@ -1691,6 +1691,12 @@ namespace GXLightBrowser
             bookmarks.ForeColor = Theme.Text;
             bookmarks.DropDownItems.Add(CreateMenuItem("Añadir página actual", "Ctrl+D", delegate { AddCurrentBookmark(); }));
             bookmarks.DropDownItems.Add(CreateMenuItem("Administrar marcadores", "", delegate { NavigateInternal("bookmarks"); }));
+            ToolStripMenuItem showBookmarksBar = CreateMenuItem("Mostrar barra de marcadores", "", delegate
+            {
+                SetBookmarksBarVisible(!_appSettings.ShowBookmarksBar);
+            });
+            showBookmarksBar.Checked = _appSettings.ShowBookmarksBar;
+            bookmarks.DropDownItems.Add(showBookmarksBar);
             bookmarks.DropDownItems.Add(new ToolStripSeparator());
             bookmarks.DropDownItems.Add(CreateMenuItem("Importar marcadores HTML...", "", delegate { ImportBookmarks(); }));
             bookmarks.DropDownItems.Add(CreateMenuItem("Exportar marcadores HTML...", "", delegate { ExportBookmarks(); }));
@@ -5084,7 +5090,8 @@ namespace GXLightBrowser
             int tabStripHeight = 22;
             int navHeight = 30;
             int bookmarksHeight = _appSettings.ShowBookmarksBar ? 24 : 0;
-            int topbarHeight = tabStripHeight + navHeight + bookmarksHeight + 6;
+            int topbarPadding = _appSettings.ShowBookmarksBar ? 8 : 4;
+            int topbarHeight = tabStripHeight + navHeight + bookmarksHeight + topbarPadding;
 
             _rootLayout.ColumnStyles[0].Width = sidebarWidth;
             _rootLayout.RowStyles[0].Height = topbarHeight;
@@ -5097,17 +5104,26 @@ namespace GXLightBrowser
                 
                 if (_appSettings.ShowBookmarksBar)
                 {
-                    _topLayout.RowStyles[2].SizeType = SizeType.Percent;
-                    _topLayout.RowStyles[2].Height = 100;
+                    _topLayout.Padding = new Padding(6, 4, 8, 4);
+                    _topLayout.RowStyles[2].SizeType = SizeType.Absolute;
+                    _topLayout.RowStyles[2].Height = bookmarksHeight;
                     _bookmarksBar.Visible = true;
                 }
                 else
                 {
+                    _topLayout.Padding = new Padding(6, 4, 8, 0);
                     _topLayout.RowStyles[2].SizeType = SizeType.Absolute;
                     _topLayout.RowStyles[2].Height = 0;
                     _bookmarksBar.Visible = false;
                 }
             }
+        }
+
+        private void SetBookmarksBarVisible(bool visible)
+        {
+            _appSettings.ShowBookmarksBar = visible;
+            _appSettings.Save();
+            ApplyLayoutDimensions();
         }
 
         private void ApplyThemeToControls()
